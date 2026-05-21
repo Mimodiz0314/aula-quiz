@@ -60,9 +60,11 @@ export default async function handler(req, res) {
     console.log(`Transcripción obtenida: ${transcripcion.length} caracteres`);
   } catch (e) {
     console.error('Error obteniendo transcripción:', e.message);
-    res.status(422).json({
-      error: `No se pudo obtener la transcripción del video. Asegúrate de que el video tiene subtítulos habilitados. Detalle: ${e.message}`
-    });
+    const esDesactivada = e.message && (e.message.includes('disabled') || e.message.includes('Transcript is disabled'));
+    const mensaje = esDesactivada
+      ? `Este video tiene las transcripciones desactivadas. Por favor usa un video que tenga subtítulos automáticos o manuales habilitados en YouTube.`
+      : `No se pudo obtener la transcripción del video. Verifica que el video exista y tenga subtítulos habilitados. Detalle técnico: ${e.message}`;
+    res.status(422).json({ error: mensaje });
     return;
   }
 

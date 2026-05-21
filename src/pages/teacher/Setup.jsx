@@ -174,8 +174,23 @@ export default function Setup({ onCreated }) {
                 disabled={cargando}
                 autoFocus
               />
+              <div className="mt-3 bg-kahootBlue/8 border border-kahootBlue/20 rounded-xl p-4 text-sm text-ink/70 space-y-1">
+                <p className="font-bold text-kahootBlue">✅ Videos que funcionan bien:</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                  <li>Videos de canales educativos (Khan Academy, TED, Kurzgesagt…)</li>
+                  <li>Videos con subtítulos generados automáticamente por YouTube</li>
+                  <li>Videos propios subidos con subtítulos cargados</li>
+                </ul>
+                <p className="font-bold text-deny/80 mt-2">❌ No funcionan:</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                  <li>Videos donde el dueño desactivó las transcripciones</li>
+                  <li>Videos privados o no listados sin subtítulos</li>
+                </ul>
+                <p className="text-xs mt-2 text-ink/50">💡 Tip: Si un video falla, ve a YouTube, ábrelo y revisa si aparece el ícono CC (Closed Captions) en el reproductor.</p>
+              </div>
             </Field>
           )}
+
 
           <div className="grid md:grid-cols-2 gap-8">
             <Field label="Cantidad de preguntas">
