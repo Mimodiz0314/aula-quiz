@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "sesiones": {
+      ".read": "auth != null && auth.token.email != null",
+      ".indexOn": ["creada_en", "docente_uid"],
+      "$pin": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email != null",
+        "estado_actual": {
+          ".write": "auth != null && auth.token.email != null"
+        },
+        "estudiantes": {
+          "$studentId": {
+            ".read": "auth != null",
+            ".write": "auth != null && (!data.exists() || data.child('uid').val() == auth.uid || auth.token.email != null)",
+            "respuestas_registradas": {
+              ".write": "auth != null && (data.parent().child('uid').val() == auth.uid || auth.token.email != null)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
