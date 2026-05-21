@@ -1,11 +1,8 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { Anthropic } = require('@anthropic-ai/sdk');
 const { OpenAI } = require('openai');
 
 admin.initializeApp();
-
-const PROVIDER = process.env.AI_PROVIDER || 'anthropic';
 
 function buildSystemPrompt(cantidad) {
   return `Eres un evaluador senior con experiencia en pruebas estandarizadas ICFES Saber (Colombia).
@@ -69,59 +66,33 @@ function parsearYValidar(raw, cantidad) {
   return norm.slice(0, cantidad);
 }
 
-exports.generarPreguntas = functions.https.onCall(async (data, context) => {
-  // En la Fase 1, paso 2, se recomienda requerir autenticación para el docente.
-  // Por ahora lo dejamos abierto o verificamos context.auth
-  // if (!context.auth) {
-  //   throw new functions.https.HttpsError('unauthenticated', 'Solo docentes autenticados pueden generar preguntas.');
-  // }
+exports.generarPreguntas = functions
+  .runWith({ timeoutSeconds: 60, memory: '256MB' })
+  .https.onCall(async (data) => {
+    const { tema, cantidad = 5, nivel = 'bachillerato' } = data;
 
-  const { tema, cantidad = 5, nivel = 'bachillerato' } = data;
-  if (!tema || cantidad < 1) {
-    throw new functions.https.HttpsError('invalid-argument', 'Parámetros inválidos.');
-  }
-
-  const system = buildSystemPrompt(cantidad);
-  const user = `Tema: ${tema}\nNivel del estudiante: ${nivel}\nGenera ${cantidad} preguntas siguiendo estrictamente el formato JSON especificado.`;
-
-  const providers = [
-    {
-      name: 'Groq',
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: 'https://api.groq.com/openai/v1',
-      model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'Cerebras',
-      apiKey: process.env.CEREBRAS_API_KEY,
-      baseURL: 'https://api.cerebras.ai/v1',
-      model: 'llama3.1-70b'
-    },
-    {
-      name: 'DeepSeek',
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      baseURL: 'https://api.deepseek.com/v1',
-      model: 'deepseek-chat'
+    if (!tema || cantidad < 1) {
+      throw new functions.https.HttpsError('invalid-argument', 'Parámetros inválidos.');
     }
-  ];
 
-  let errorMsg = "";
-
-  for (const provider of providers) {
-    if (!provider.apiKey) {
-      console.warn(`⚠️ Saltando proveedor ${provider.name} porque no tiene API Key configurada.`);
-      continue;
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new functions.https.HttpsError('internal', 'GROQ_API_KEY no está configurada en el servidor.');
     }
+
+    const system = buildSystemPrompt(cantidad);
+    const user = `Tema: ${tema}\nNivel del estudiante: ${nivel}\nGenera ${cantidad} preguntas siguiendo estrictamente el formato JSON especificado.`;
+
     try {
-      console.log(`🤖 Intentando generar preguntas con ${provider.name}...`);
+      console.log(`🤖 Generando ${cantidad} preguntas sobre "${tema}" con Groq...`);
       const openai = new OpenAI({
-        apiKey: provider.apiKey,
-        baseURL: provider.baseURL,
-        timeout: 25000 // 25 segundos de timeout
+        apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+        timeout: 50000,
       });
 
       const response = await openai.chat.completions.create({
-        model: provider.model,
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user },
@@ -130,16 +101,13 @@ exports.generarPreguntas = functions.https.onCall(async (data, context) => {
       });
 
       const raw = response.choices[0].message.content || '';
-      console.log(`✅ ¡Preguntas generadas exitosamente con ${provider.name}!`);
+      console.log('✅ ¡Preguntas generadas exitosamente con Groq!');
 
       const preguntas = parsearYValidar(raw, cantidad);
       return { preguntas };
 
     } catch (error) {
-      console.error(`❌ Error en proveedor ${provider.name}:`, error.message || error);
-      errorMsg += `${provider.name}: ${error.message || error}. `;
+      console.error('❌ Error con Groq:', error.message || error);
+      throw new functions.https.HttpsError('internal', `Error con Groq: ${error.message}`);
     }
-  }
-
-  throw new functions.https.HttpsError('internal', `Todos los proveedores de IA fallaron. Errores: ${errorMsg}`);
-});
+  });

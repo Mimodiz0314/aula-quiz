@@ -1,49 +1,12 @@
 // ---------------------------------------------------------------------------
-// AI SERVICE — Generación de preguntas con estándar ICFES (Ejecutado en Cliente con CORS Proxy)
+// AI SERVICE — Generación de preguntas via API serverless propia
 //
-// Llama directamente a Groq, Cerebras o DeepSeek usando un proxy de CORS (corsproxy.io)
-// para evitar exponer o bloquear peticiones desde el navegador.
+// Llama al endpoint /api/generar (función serverless de Vercel)
+// que se ejecuta en el servidor y llama a Groq sin problemas de CORS.
+// La API key nunca se expone al navegador.
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(cantidad) {
-  return `Eres un evaluador senior con experiencia en pruebas estandarizadas ICFES Saber (Colombia).
-Tu tarea es generar EXACTAMENTE ${cantidad} preguntas de selección múltiple, cumpliendo estos criterios INNEGOCIABLES:
-
-1. ENUNCIADO: claro, autocontenido, con contexto + tarea. Sin ambigüedad.
-2. OPCIONES: 4 alternativas (A, B, C, D), de longitud y complejidad similares,
-   todas plausibles, redactadas en paralelo gramatical.
-3. CORRECTA: una y solo una opción inobjetablemente correcta.
-4. DIFICULTAD: progresiva, pero alcanzable para el nivel solicitado.
-5. SIN PISTAS: no incluyas palabras como "todas las anteriores", "ninguna",
-   ni longitudes desiguales que delaten la respuesta.
-6. IDIOMA: español neutro, registro académico, ortografía perfecta.
-
-FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdown:
-[
-  {
-    "pregunta": "string con el enunciado",
-    "opciones": ["A...", "B...", "C...", "D..."],
-    "correcta": 0
-  }
-]
-El campo "correcta" es el índice 0-3 de la opción correcta.
-Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
-}
-
-function parsearYValidar(raw, cantidad) {
-  let parsed;
-  try {
-    const limpio = raw
-      .trim()
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/```$/i, '')
-      .trim();
-    parsed = JSON.parse(limpio);
-  } catch (e) {
-    throw new Error('La IA no devolvió JSON válido: ' + e.message);
-  }
-
-  const arr = Array.isArray(parsed) ? parsed : parsed.preguntas;
+function parsearYValidar(arr, cantidad) {
   if (!Array.isArray(arr)) {
     throw new Error('Formato inesperado: se esperaba un array.');
   }
@@ -68,102 +31,32 @@ function parsearYValidar(raw, cantidad) {
 }
 
 /**
- * Genera preguntas llamando directamente a los proveedores de IA
- * con una cadena de fallback en el cliente.
+ * Genera preguntas llamando al endpoint serverless /api/generar.
+ * Cuando la app está en Firebase Hosting, usa la URL de Vercel configurada
+ * en VITE_API_BASE_URL. En local, usa /api/generar directamente.
  */
 export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' }) {
   if (!tema || cantidad < 1) throw new Error('Parámetros inválidos.');
 
-  // Intento 1: Intentar llamar a nuestra API serverless /api/generar (ideal para producción)
-  try {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const vercelApiUrl = import.meta.env.VITE_VERCEL_API_URL || '';
-    const apiEndpoint = vercelApiUrl ? `${vercelApiUrl}/api/generar` : '/api/generar';
+  // VITE_API_BASE_URL debe apuntar a tu URL de Vercel, ej: https://aula-quiz.vercel.app
+  // Si no está configurada, asume que el backend y el frontend están en el mismo dominio.
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+  const endpoint = `${apiBase}/api/generar`;
 
-    // Intentamos usar el backend si estamos en producción, o si VITE_VERCEL_API_URL está explícitamente configurada
-    if (!isLocalhost || vercelApiUrl) {
-      console.log(`🤖 Intentando generar preguntas desde el servidor (${apiEndpoint})...`);
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ tema, cantidad, nivel })
-      });
+  console.log(`🤖 Generando ${cantidad} preguntas sobre "${tema}" via ${endpoint}...`);
 
-      if (response.ok) {
-        const arr = await response.json();
-        console.log("✅ ¡Preguntas generadas exitosamente desde el servidor!");
-        // Re-usamos parsearYValidar pasándole el string JSON del array
-        return parsearYValidar(JSON.stringify(arr), cantidad);
-      } else {
-        const txt = await response.text();
-        console.warn(`⚠️ El servidor de API devolvió un error: ${response.status} - ${txt}. Usando fallback...`);
-      }
-    }
-  } catch (err) {
-    console.warn("⚠️ No se pudo obtener respuesta del servidor /api/generar. Usando fallback en cliente...", err);
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tema, cantidad, nivel }),
+  });
+
+  if (!response.ok) {
+    const txt = await response.text();
+    throw new Error(`Error del servidor (${response.status}): ${txt}`);
   }
 
-  // Intento 2 (Fallback): Llamada directa desde el navegador (usando proxy cors.lol)
-  const system = buildSystemPrompt(cantidad);
-  const user = `Tema: ${tema}\nNivel del estudiante: ${nivel}\nGenera ${cantidad} preguntas siguiendo estrictamente el formato JSON especificado.`;
-
-  const providers = [
-    {
-      name: 'Groq',
-      endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-      apiKey: import.meta.env.VITE_GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    }
-  ];
-
-  let errorMsg = "";
-
-  for (const provider of providers) {
-    if (!provider.apiKey) {
-      console.warn(`⚠️ Saltando proveedor ${provider.name} porque no tiene API Key configurada.`);
-      continue;
-    }
-    try {
-      console.log(`🤖 Intentando generar preguntas con ${provider.name} en el cliente...`);
-      
-      // Usamos el proxy libre api.cors.lol que soporta solicitudes preflight de producción.
-      const proxyUrl = `https://api.cors.lol/?url=${encodeURIComponent(provider.endpoint)}`;
-
-      const response = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.apiKey}`
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user }
-          ],
-          temperature: 0.7
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const result = await response.json();
-      const raw = result.choices?.[0]?.message?.content || '';
-      console.log(`✅ ¡Preguntas generadas exitosamente con ${provider.name}!`);
-
-      // Validar y retornar las preguntas parseadas
-      return parsearYValidar(raw, cantidad);
-
-    } catch (error) {
-      console.error(`❌ Error en proveedor ${provider.name} (cliente):`, error.message || error);
-      errorMsg += `${provider.name}: ${error.message || error}. `;
-    }
-  }
-
-  throw new Error(`Todos los proveedores de IA fallaron. Errores: ${errorMsg}`);
+  const arr = await response.json();
+  console.log('✅ ¡Preguntas recibidas exitosamente!');
+  return parsearYValidar(arr, cantidad);
 }
