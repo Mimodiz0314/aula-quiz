@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { iniciarSesion, setDuracion, cerrarSesion } from '../../services/sessionService.js';
 import { useNavigate } from 'react-router-dom';
 
@@ -5,6 +6,49 @@ export default function Lobby({ pin, sesion }) {
   const navigate = useNavigate();
   const estudiantes = Object.entries(sesion.estudiantes || {});
   const duracion = sesion.pregunta_duracion ?? 30;
+
+  const [timerMode, setTimerMode] = useState(() => {
+    if (duracion === 0) return 'sin_limite';
+    if (duracion >= 60 && duracion % 60 === 0) return 'minutos';
+    return 'segundos';
+  });
+
+  const [timerValue, setTimerValue] = useState(() => {
+    if (duracion === 0) return 30;
+    if (duracion >= 60 && duracion % 60 === 0) return duracion / 60;
+    return duracion;
+  });
+
+  // Mantener sincronizado el estado local si la sesión en Firebase cambia.
+  useEffect(() => {
+    if (duracion === 0) {
+      setTimerMode('sin_limite');
+    } else if (duracion >= 60 && duracion % 60 === 0) {
+      setTimerMode('minutos');
+      setTimerValue(duracion / 60);
+    } else {
+      setTimerMode('segundos');
+      setTimerValue(duracion);
+    }
+  }, [duracion]);
+
+  const handleModeChange = (mode) => {
+    setTimerMode(mode);
+    if (mode === 'sin_limite') {
+      setDuracion(pin, 0);
+    } else {
+      const val = timerValue;
+      const seconds = mode === 'minutos' ? val * 60 : val;
+      setDuracion(pin, seconds);
+    }
+  };
+
+  const handleValueChange = (val) => {
+    if (val < 1) val = 1;
+    setTimerValue(val);
+    const seconds = timerMode === 'minutos' ? val * 60 : val;
+    setDuracion(pin, seconds);
+  };
 
   async function handleCerrar() {
     if (!confirm('¿Cerrar la sesión y borrarla? Los estudiantes serán desconectados.')) return;
@@ -46,16 +90,70 @@ export default function Lobby({ pin, sesion }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-8 bg-mist/30 p-2 rounded-xl">
-            <span className="font-bold text-sm text-ink/60 pl-4 uppercase tracking-wider">Tiempo (seg)</span>
-            <input
-              type="number"
-              min={5}
-              max={300}
-              value={duracion}
-              onChange={(e) => setDuracion(pin, Number(e.target.value))}
-              className="w-20 bg-white rounded-lg font-black text-xl py-2 text-center shadow-sm border border-mist"
-            />
+          {/* Selector de Límite de Tiempo Avanzado */}
+          <div className="flex flex-col items-center gap-3 mb-8 bg-mist/20 p-4 rounded-2xl w-full max-w-md border border-mist/50">
+            <span className="font-bold text-sm text-ink/60 uppercase tracking-widest text-center">
+              Límite de tiempo por pregunta
+            </span>
+            
+            <div className="flex w-full gap-2 p-1 bg-mist/40 rounded-xl">
+              <button
+                type="button"
+                onClick={() => handleModeChange('segundos')}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                  timerMode === 'segundos'
+                    ? 'bg-white text-kahootBlue shadow-sm'
+                    : 'text-ink/60 hover:text-ink hover:bg-white/30'
+                }`}
+              >
+                Segundos
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('minutos')}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                  timerMode === 'minutos'
+                    ? 'bg-white text-kahootBlue shadow-sm'
+                    : 'text-ink/60 hover:text-ink hover:bg-white/30'
+                }`}
+              >
+                Minutos
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('sin_limite')}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                  timerMode === 'sin_limite'
+                    ? 'bg-white text-kahootBlue shadow-sm'
+                    : 'text-ink/60 hover:text-ink hover:bg-white/30'
+                }`}
+              >
+                Sin límite
+              </button>
+            </div>
+
+            {timerMode !== 'sin_limite' && (
+              <div className="flex items-center gap-3 mt-2">
+                <span className="font-bold text-sm text-ink/50">Duración:</span>
+                <input
+                  type="number"
+                  min={timerMode === 'minutos' ? 1 : 5}
+                  max={timerMode === 'minutos' ? 60 : 3600}
+                  value={timerValue}
+                  onChange={(e) => handleValueChange(Number(e.target.value))}
+                  className="w-24 bg-white rounded-lg font-black text-xl py-2 text-center shadow-sm border border-mist focus:outline-none focus:border-kahootBlue"
+                />
+                <span className="font-bold text-sm text-ink/50">
+                  {timerMode === 'minutos' ? 'min' : 'seg'}
+                </span>
+              </div>
+            )}
+            
+            {timerMode === 'sin_limite' && (
+              <p className="text-sm font-bold text-ink/40 mt-2 text-center">
+                Las preguntas no tendrán tiempo límite. El docente avanza manualmente.
+              </p>
+            )}
           </div>
 
           <button

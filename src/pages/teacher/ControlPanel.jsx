@@ -65,6 +65,7 @@ export default function ControlPanel({ pin, sesion }) {
   const esActiva = sesion.estado_actual === ESTADOS.PREGUNTA_ACTIVA;
   const esAgotado = sesion.estado_actual === ESTADOS.TIEMPO_AGOTADO;
   const esRevelado = sesion.estado_actual === ESTADOS.RESPUESTA_REVELADA;
+  const esSinLimite = sesion.pregunta_duracion === 0;
 
   return (
     <main className="min-h-screen px-4 md:px-8 py-6 flex flex-col bg-gameBg">
@@ -91,10 +92,10 @@ export default function ControlPanel({ pin, sesion }) {
           </div>
           <div
             className={`font-black tabular-nums text-4xl w-16 h-16 flex items-center justify-center bg-gameBg rounded-full ${
-              esActiva && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
+              esActiva && !esSinLimite && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
             }`}
           >
-            {esActiva ? restante : '0'}
+            {esActiva ? (esSinLimite ? '∞' : restante) : '0'}
           </div>
         </div>
       </header>

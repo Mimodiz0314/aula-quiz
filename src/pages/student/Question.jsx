@@ -17,6 +17,7 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
   const yaRespondio = yo.respuestas_registradas?.[idx];
   const elegida = yaRespondio !== undefined ? yaRespondio : null;
   const total = sesion.preguntas.length;
+  const esSinLimite = sesion.pregunta_duracion === 0;
 
   const [pendiente, setPendiente] = useState(null);
 
@@ -52,10 +53,10 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
         </div>
         <div
           className={`font-black tabular-nums text-3xl md:text-4xl bg-white w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full shadow-md ${
-            !bloqueado && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
+            !bloqueado && !esSinLimite && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
           }`}
         >
-          {bloqueado ? '0' : restante}
+          {bloqueado ? '0' : (esSinLimite ? '∞' : restante)}
         </div>
       </header>
 
