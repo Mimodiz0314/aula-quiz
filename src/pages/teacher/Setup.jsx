@@ -4,6 +4,7 @@ import { crearSesion } from '../../services/sessionService.js';
 import TeacherHistory from './TeacherHistory.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useNavigate } from 'react-router-dom';
+import ReviewQuestions from '../../components/ReviewQuestions.jsx';
 
 export default function Setup({ onCreated }) {
   const [tema, setTema] = useState('');
@@ -12,6 +13,7 @@ export default function Setup({ onCreated }) {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
   const [paso, setPaso] = useState('idle');
+  const [preguntasGeneradas, setPreguntasGeneradas] = useState([]);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -25,9 +27,8 @@ export default function Setup({ onCreated }) {
     try {
       setPaso('generando');
       const preguntas = await generarPreguntas({ tema: tema.trim(), cantidad, nivel });
-      setPaso('creando');
-      const pin = await crearSesion(preguntas);
-      onCreated(pin);
+      setPreguntasGeneradas(preguntas);
+      setPaso('revisando');
     } catch (e) {
       console.error(e);
       setError(e.message || 'Error inesperado');
@@ -35,6 +36,39 @@ export default function Setup({ onCreated }) {
     } finally {
       setCargando(false);
     }
+  }
+
+  async function handleCrearSalaConfirmada(preguntasFinales) {
+    setCargando(true);
+    try {
+      setPaso('creando');
+      if (preguntasFinales.length === 0) throw new Error('Debe haber al menos 1 pregunta.');
+      const pin = await crearSesion(preguntasFinales);
+      onCreated(pin);
+    } catch (e) {
+      console.error(e);
+      setError(e.message || 'Error inesperado');
+      setPaso('revisando');
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  if (paso === 'revisando') {
+    return (
+      <main className="min-h-screen px-6 md:px-12 py-12 max-w-4xl mx-auto flex flex-col bg-gameBg animate-fade-in">
+        {cargando && (
+           <div className="fixed inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+             <div className="text-2xl font-black animate-pulse-soft text-kahootBlue">Creando sala...</div>
+           </div>
+        )}
+        <ReviewQuestions 
+          initialQuestions={preguntasGeneradas}
+          onConfirm={handleCrearSalaConfirmada}
+          onCancel={() => setPaso('idle')}
+        />
+      </main>
+    );
   }
 
   return (
