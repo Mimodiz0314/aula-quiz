@@ -8,6 +8,8 @@ import ReviewQuestions from '../../components/ReviewQuestions.jsx';
 
 export default function Setup({ onCreated }) {
   const [tema, setTema] = useState('');
+  const [textoBase, setTextoBase] = useState('');
+  const [modo, setModo] = useState('tema'); // 'tema' o 'texto'
   const [cantidad, setCantidad] = useState(10);
   const [nivel, setNivel] = useState('bachillerato');
   const [cargando, setCargando] = useState(false);
@@ -20,13 +22,19 @@ export default function Setup({ onCreated }) {
 
   async function handleGenerar() {
     setError(null);
-    if (!tema.trim()) return setError('Indica un tema.');
+    if (modo === 'tema' && !tema.trim()) return setError('Indica un tema.');
+    if (modo === 'texto' && !textoBase.trim()) return setError('Pega el cuestionario en el cuadro de texto.');
     if (cantidad < 1 || cantidad > 30) return setError('Entre 1 y 30 preguntas.');
 
     setCargando(true);
     try {
       setPaso('generando');
-      const preguntas = await generarPreguntas({ tema: tema.trim(), cantidad, nivel });
+      const preguntas = await generarPreguntas({ 
+        tema: modo === 'tema' ? tema.trim() : '', 
+        textoBase: modo === 'texto' ? textoBase.trim() : '',
+        cantidad, 
+        nivel 
+      });
       setPreguntasGeneradas(preguntas);
       setPaso('revisando');
     } catch (e) {
@@ -99,21 +107,48 @@ export default function Setup({ onCreated }) {
           Crea tu próximo <span className="text-kahootBlue">Juego</span>
         </h1>
         <p className="text-ink/60 max-w-xl font-bold text-lg mb-10">
-          La IA generará preguntas con estándar ICFES: enunciado claro, cuatro
-          opciones, y solo una respuesta correcta.
+          La IA puede generar preguntas nuevas basadas en un tema, o extraerlas si pegas tu propio texto.
         </p>
 
+        <div className="flex gap-2 mb-8 bg-ink/5 p-1 rounded-xl w-fit">
+          <button 
+            onClick={() => setModo('tema')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'tema' ? 'bg-white shadow-sm text-kahootBlue' : 'text-ink/60 hover:text-ink'}`}
+          >
+            Generar por Tema
+          </button>
+          <button 
+            onClick={() => setModo('texto')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'texto' ? 'bg-white shadow-sm text-kahootBlue' : 'text-ink/60 hover:text-ink'}`}
+          >
+            Extraer de Texto
+          </button>
+        </div>
+
         <div className="space-y-8">
-          <Field label="¿De qué trata el juego?" hint="Sé específico. Ej: «Fotosíntesis en plantas C3»">
-            <input
-              className="field"
-              value={tema}
-              onChange={(e) => setTema(e.target.value)}
-              placeholder="Ej. Revolución Industrial"
-              disabled={cargando}
-              autoFocus
-            />
-          </Field>
+          {modo === 'tema' ? (
+            <Field label="¿De qué trata el juego?" hint="Sé específico. Ej: «Fotosíntesis en plantas C3»">
+              <input
+                className="field"
+                value={tema}
+                onChange={(e) => setTema(e.target.value)}
+                placeholder="Ej. Revolución Industrial"
+                disabled={cargando}
+                autoFocus
+              />
+            </Field>
+          ) : (
+            <Field label="Pega tu cuestionario" hint="La IA extraerá las preguntas y opciones automáticamente.">
+              <textarea
+                className="field min-h-[150px] resize-y"
+                value={textoBase}
+                onChange={(e) => setTextoBase(e.target.value)}
+                placeholder="Ej: Pregunta 1: ¿Cuál es la capital... A) Madrid B) Lima..."
+                disabled={cargando}
+                autoFocus
+              />
+            </Field>
+          )}
 
           <div className="grid md:grid-cols-2 gap-8">
             <Field label="Cantidad de preguntas">

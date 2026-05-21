@@ -19,14 +19,40 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { tema, cantidad, nivel } = req.body || {};
-  if (!tema || !cantidad) {
-    res.status(400).json({ error: 'Parámetros faltantes: tema y cantidad son requeridos.' });
+  const { tema, cantidad, nivel, textoBase } = req.body || {};
+  if ((!tema && !textoBase)) {
+    res.status(400).json({ error: 'Parámetros faltantes: debes proveer un tema o un textoBase.' });
     return;
   }
 
-  const systemPrompt = `Eres un evaluador senior con experiencia en pruebas estandarizadas ICFES Saber (Colombia).
-Tu tarea es generar EXACTAMENTE ${cantidad} preguntas de selección múltiple, cumpliendo estos criterios INNEGOCIABLES:
+  let systemPrompt = '';
+  let userPrompt = '';
+
+  if (textoBase) {
+    systemPrompt = `Eres un asistente experto en extracción de datos educativos.
+Tu tarea es leer el texto crudo proporcionado por el usuario (que contiene un cuestionario) y extraer todas las preguntas, opciones de respuesta y la respuesta correcta.
+Debes formatear el resultado EXACTAMENTE como un array JSON.
+
+Criterios INNEGOCIABLES:
+1. Extrae cada pregunta encontrada en el texto.
+2. Extrae las opciones para cada pregunta (usualmente 4).
+3. Determina el índice de la respuesta correcta (0 para A/primera, 1 para B/segunda, 2 para C/tercera, 3 para D/cuarta) según lo indique el texto.
+
+FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdown:
+[
+  {
+    "pregunta": "string con el enunciado",
+    "opciones": ["Opción 1", "Opción 2", "Opción 3", "Opción 4"],
+    "correcta": 0
+  }
+]
+El campo "correcta" es el índice 0-3 de la opción correcta.
+Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
+
+    userPrompt = `Extrae el cuestionario del siguiente texto y devuélvelo en el formato JSON indicado:\n\n${textoBase}`;
+  } else {
+    systemPrompt = `Eres un evaluador senior con experiencia en pruebas estandarizadas ICFES Saber (Colombia).
+Tu tarea es generar EXACTAMENTE ${cantidad || 10} preguntas de selección múltiple, cumpliendo estos criterios INNEGOCIABLES:
 
 1. ENUNCIADO: claro, autocontenido, con contexto + tarea. Sin ambigüedad.
 2. OPCIONES: 4 alternativas (A, B, C, D), de longitud y complejidad similares, todas plausibles, redactadas en paralelo gramatical.
@@ -46,7 +72,8 @@ FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdow
 El campo "correcta" es el índice 0-3 de la opción correcta.
 Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
 
-  const userPrompt = `Tema: ${tema}\nNivel del estudiante: ${nivel || 'bachillerato'}\nGenera ${cantidad} preguntas siguiendo estrictamente el formato JSON especificado.`;
+    userPrompt = `Tema: ${tema}\nNivel del estudiante: ${nivel || 'bachillerato'}\nGenera ${cantidad || 10} preguntas siguiendo estrictamente el formato JSON especificado.`;
+  }
 
   const providers = [
     {

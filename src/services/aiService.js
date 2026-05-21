@@ -26,8 +26,8 @@ function parsearYValidar(arr, cantidad) {
   return norm.slice(0, cantidad);
 }
 
-export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' }) {
-  if (!tema || cantidad < 1) throw new Error('Parámetros inválidos.');
+export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato', textoBase = '' }) {
+  if ((!tema && !textoBase) || cantidad < 1) throw new Error('Parámetros inválidos.');
 
   // En Vercel: VITE_API_BASE_URL está vacía → llama a /api/generar (mismo dominio, sin CORS)
   // En Firebase Hosting: VITE_API_BASE_URL = https://aula-quiz.vercel.app
@@ -41,7 +41,7 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' 
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tema, cantidad, nivel }),
+      body: JSON.stringify({ tema, cantidad, nivel, textoBase }),
     });
   } catch (networkErr) {
     throw new Error(`No se pudo conectar con el servidor de IA: ${networkErr.message}`);
