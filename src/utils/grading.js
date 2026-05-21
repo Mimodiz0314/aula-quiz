@@ -36,10 +36,11 @@ export function contarAciertos(preguntas = [], respuestas = {}) {
  * @returns {number}              p.ej. 4.2
  */
 export function calcularNota(aciertos, total) {
-  if (!total || total <= 0) return 0.0;
+  if (!total || total <= 0) return 1.0;
   const bruto = (aciertos / total) * 5.0;
   // Redondeo a un decimal — evita 4.199999...
-  return Math.round(bruto * 10) / 10;
+  const nota = Math.round(bruto * 10) / 10;
+  return Math.max(1.0, nota);
 }
 
 /**

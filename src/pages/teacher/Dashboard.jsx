@@ -39,11 +39,16 @@ export default function Dashboard({ pin, sesion }) {
   }
 
   function exportarCSV() {
-    const head = 'Nombre,Grado,Aciertos,Total,Nota\n';
+    const head = 'No.,Nombre del Estudiante,Calificación (1.0 - 5.0),% Porcentaje Adquirido,Aciertos,Fallidas\n';
     const body = filas
-      .map((f) => `"${f.nombre}","${f.grado}",${f.aciertos},${total},${f.nota.toFixed(1)}`)
+      .map((f, i) => {
+        const fallidas = total - f.aciertos;
+        const porcentaje = total > 0 ? Math.round((f.aciertos / total) * 100) : 0;
+        const notaFormateada = parseFloat(f.nota.toFixed(1));
+        return `${i + 1},"${f.nombre}",${notaFormateada},"${porcentaje}%",${f.aciertos},${fallidas}`;
+      })
       .join('\n');
-    const blob = new Blob([head + body], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\uFEFF' + head + body], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -116,26 +121,41 @@ export default function Dashboard({ pin, sesion }) {
         {/* Resto de la tabla */}
         <section className="bg-white rounded-3xl p-8 shadow-sm">
           <h3 className="font-black text-xl mb-6">Todos los resultados</h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-mist/40 shadow-sm">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b-2 border-mist">
-                  <th className="py-3 font-bold text-ink/50 uppercase text-sm w-12">#</th>
-                  <th className="py-3 font-bold text-ink/50 uppercase text-sm">Jugador</th>
-                  <th className="py-3 font-bold text-ink/50 uppercase text-sm text-center">Aciertos</th>
-                  <th className="py-3 font-bold text-ink/50 uppercase text-sm text-right">Nota</th>
+                <tr className="bg-[#46178f] text-white">
+                  <th className="py-3 px-4 font-bold text-sm text-center rounded-tl-xl w-16">No.</th>
+                  <th className="py-3 px-4 font-bold text-sm text-left">Nombre del Estudiante</th>
+                  <th className="py-3 px-4 font-bold text-sm text-right">Calificación (1.0 - 5.0)</th>
+                  <th className="py-3 px-4 font-bold text-sm text-right">% Porcentaje Adquirido</th>
+                  <th className="py-3 px-4 font-bold text-sm text-right"># Aciertos</th>
+                  <th className="py-3 px-4 font-bold text-sm text-right rounded-tr-xl"># Fallidas</th>
                 </tr>
               </thead>
               <tbody>
                 {filas.map((f, i) => (
-                  <tr key={f.id} className="border-b border-mist/50 hover:bg-gameBg transition-colors">
-                    <td className="py-4 font-bold text-ink/40">{i + 1}</td>
-                    <td className="py-4 font-bold text-lg">
-                      {f.nombre} <span className="text-sm font-normal text-ink/50 ml-2">{f.grado}</span>
+                  <tr key={f.id} className="border-b border-mist/30 hover:bg-gameBg transition-colors even:bg-mist/10">
+                    <td className="py-4 px-4 font-bold text-ink/40 text-center">{i + 1}</td>
+                    <td className="py-4 px-4 font-bold text-ink text-lg">
+                      {f.nombre}
+                      {f.grado && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-mist/50 text-ink/60 ml-2">
+                          {f.grado}
+                        </span>
+                      )}
                     </td>
-                    <td className="py-4 font-bold text-center">{f.aciertos} / {total}</td>
-                    <td className={`py-4 font-black text-2xl text-right ${f.nota >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'}`}>
-                      {f.nota.toFixed(1)}
+                    <td className={`py-4 px-4 font-black text-2xl text-right ${f.nota >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'}`}>
+                      {parseFloat(f.nota.toFixed(1))}
+                    </td>
+                    <td className="py-4 px-4 font-black text-right text-ink/70">
+                      {total > 0 ? Math.round((f.aciertos / total) * 100) : 0}%
+                    </td>
+                    <td className="py-4 px-4 font-bold text-right text-kahootGreen">
+                      {f.aciertos}
+                    </td>
+                    <td className="py-4 px-4 font-bold text-right text-kahootRed">
+                      {total - f.aciertos}
                     </td>
                   </tr>
                 ))}
