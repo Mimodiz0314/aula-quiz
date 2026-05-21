@@ -108,15 +108,17 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' 
     try {
       console.log(`🤖 Intentando generar preguntas con ${provider.name} en el cliente...`);
       
-      // Usamos el proxy de CORS para evitar el bloqueo del navegador.
-      // Para peticiones POST con cabeceras personalizadas (Authorization), corsproxy.io requiere el formato sin "?"
-      const proxyUrl = `https://corsproxy.io/${provider.endpoint}`;
+      // Para evitar que el navegador envíe una petición preflight (OPTIONS) que falle CORS,
+      // pasamos los encabezados de autorización y content-type como parámetros de consulta (reqHeaders)
+      // y enviamos la petición con Content-Type: text/plain. El proxy se encarga de reescribirlos al destino.
+      const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(provider.endpoint)}` +
+                       `&reqHeaders=authorization:Bearer%20${provider.apiKey}` +
+                       `&reqHeaders=content-type:application/json`;
 
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.apiKey}`
+          'Content-Type': 'text/plain' // Evita el preflight de CORS en el navegador
         },
         body: JSON.stringify({
           model: provider.model,
