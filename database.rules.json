@@ -1,18 +1,35 @@
 {
   "rules": {
     "sesiones": {
-      ".read": "auth != null && auth.token.email != null",
-      ".indexOn": ["creada_en", "docente_uid"],
+      ".read": false,
+      ".write": false,
       "$pin": {
-        ".read": "auth != null",
+        ".read": true,
         ".write": "auth != null && auth.token.email != null",
+        "preguntas": {
+          ".read": true,
+          ".write": "auth != null && auth.token.email != null"
+        },
         "estado_actual": {
+          ".read": true,
+          ".write": "auth != null && auth.token.email != null"
+        },
+        "pregunta_idx": {
+          ".read": true,
+          ".write": "auth != null && auth.token.email != null"
+        },
+        "pregunta_inicio_ts": {
+          ".read": true,
+          ".write": "auth != null && auth.token.email != null"
+        },
+        "pregunta_duracion": {
+          ".read": true,
           ".write": "auth != null && auth.token.email != null"
         },
         "estudiantes": {
+          ".read": true,
           "$studentId": {
-            ".read": "auth != null",
-            ".write": "auth != null && (!data.exists() || data.child('uid').val() == auth.uid || auth.token.email != null)",
+            ".write": "auth != null",
             "respuestas_registradas": {
               ".write": "auth != null && (data.parent().child('uid').val() == auth.uid || auth.token.email != null)"
             }
