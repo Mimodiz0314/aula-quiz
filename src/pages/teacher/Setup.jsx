@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { generarPreguntas } from '../../services/aiService.js';
+import { generarPreguntas, generarPreguntasDeYoutube } from '../../services/aiService.js';
 import { crearSesion } from '../../services/sessionService.js';
 import TeacherHistory from './TeacherHistory.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -9,7 +9,8 @@ import ReviewQuestions from '../../components/ReviewQuestions.jsx';
 export default function Setup({ onCreated }) {
   const [tema, setTema] = useState('');
   const [textoBase, setTextoBase] = useState('');
-  const [modo, setModo] = useState('tema'); // 'tema' o 'texto'
+  const [urlYoutube, setUrlYoutube] = useState('');
+  const [modo, setModo] = useState('tema'); // 'tema', 'texto' o 'youtube'
   const [cantidad, setCantidad] = useState(10);
   const [nivel, setNivel] = useState('bachillerato');
   const [cargando, setCargando] = useState(false);
@@ -24,17 +25,23 @@ export default function Setup({ onCreated }) {
     setError(null);
     if (modo === 'tema' && !tema.trim()) return setError('Indica un tema.');
     if (modo === 'texto' && !textoBase.trim()) return setError('Pega el cuestionario en el cuadro de texto.');
+    if (modo === 'youtube' && !urlYoutube.trim()) return setError('Pega el enlace del video de YouTube.');
     if (cantidad < 1 || cantidad > 30) return setError('Entre 1 y 30 preguntas.');
 
     setCargando(true);
     try {
       setPaso('generando');
-      const preguntas = await generarPreguntas({ 
-        tema: modo === 'tema' ? tema.trim() : '', 
-        textoBase: modo === 'texto' ? textoBase.trim() : '',
-        cantidad, 
-        nivel 
-      });
+      let preguntas;
+      if (modo === 'youtube') {
+        preguntas = await generarPreguntasDeYoutube({ urlYoutube: urlYoutube.trim(), cantidad, nivel });
+      } else {
+        preguntas = await generarPreguntas({
+          tema: modo === 'tema' ? tema.trim() : '',
+          textoBase: modo === 'texto' ? textoBase.trim() : '',
+          cantidad,
+          nivel
+        });
+      }
       setPreguntasGeneradas(preguntas);
       setPaso('revisando');
     } catch (e) {
@@ -107,26 +114,32 @@ export default function Setup({ onCreated }) {
           Crea tu próximo <span className="text-kahootBlue">Juego</span>
         </h1>
         <p className="text-ink/60 max-w-xl font-bold text-lg mb-10">
-          La IA puede generar preguntas nuevas basadas en un tema, o extraerlas si pegas tu propio texto.
+          La IA genera preguntas desde un tema, extrae de tu propio texto, o analiza un video de YouTube.
         </p>
 
-        <div className="flex gap-2 mb-8 bg-ink/5 p-1 rounded-xl w-fit">
-          <button 
+        <div className="flex flex-wrap gap-2 mb-8 bg-ink/5 p-1 rounded-xl w-fit">
+          <button
             onClick={() => setModo('tema')}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'tema' ? 'bg-white shadow-sm text-kahootBlue' : 'text-ink/60 hover:text-ink'}`}
           >
-            Generar por Tema
+            💡 Por Tema
           </button>
-          <button 
+          <button
             onClick={() => setModo('texto')}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'texto' ? 'bg-white shadow-sm text-kahootBlue' : 'text-ink/60 hover:text-ink'}`}
           >
-            Extraer de Texto
+            📋 Pegar Texto
+          </button>
+          <button
+            onClick={() => setModo('youtube')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'youtube' ? 'bg-white shadow-sm text-red-500' : 'text-ink/60 hover:text-ink'}`}
+          >
+            🎥 Desde YouTube
           </button>
         </div>
 
         <div className="space-y-8">
-          {modo === 'tema' ? (
+          {modo === 'tema' && (
             <Field label="¿De qué trata el juego?" hint="Sé específico. Ej: «Fotosíntesis en plantas C3»">
               <input
                 className="field"
@@ -137,13 +150,27 @@ export default function Setup({ onCreated }) {
                 autoFocus
               />
             </Field>
-          ) : (
+          )}
+          {modo === 'texto' && (
             <Field label="Pega tu cuestionario" hint="La IA extraerá las preguntas y opciones automáticamente.">
               <textarea
-                className="field min-h-[150px] resize-y"
+                className="field min-h-[180px] resize-y"
                 value={textoBase}
                 onChange={(e) => setTextoBase(e.target.value)}
                 placeholder="Ej: Pregunta 1: ¿Cuál es la capital... A) Madrid B) Lima..."
+                disabled={cargando}
+                autoFocus
+              />
+            </Field>
+          )}
+          {modo === 'youtube' && (
+            <Field label="Enlace del video de YouTube" hint="El video debe tener subtítulos activados (automáticos o manuales).">
+              <input
+                className="field"
+                type="url"
+                value={urlYoutube}
+                onChange={(e) => setUrlYoutube(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
                 disabled={cargando}
                 autoFocus
               />
@@ -185,7 +212,7 @@ export default function Setup({ onCreated }) {
 
           <div className="pt-8 border-t border-mist flex flex-col md:flex-row md:items-center gap-6 justify-between">
             <p className="font-bold text-sm uppercase text-ink/40 tracking-widest">
-              El proceso tarda aprox. 10-15s
+              {modo === 'youtube' ? 'Proceso: ~20-30s • requiere subtítulos en el video' : 'El proceso tarda aprox. 10-15s'}
             </p>
             <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
               <button onClick={handleCrearManual} disabled={cargando} className="p-4 rounded-xl font-black uppercase tracking-widest bg-white border-4 border-kahootBlue text-kahootBlue hover:bg-kahootBlue/10 transition-all shadow-sm">
@@ -217,7 +244,7 @@ function Field({ label, hint, children }) {
 }
 
 function estadoTexto(paso) {
-  if (paso === 'generando') return 'Generando con IA...';
+  if (paso === 'generando') return 'Analizando con IA...';
   if (paso === 'creando') return 'Creando sala...';
   return 'Cargando...';
 }

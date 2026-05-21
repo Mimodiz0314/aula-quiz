@@ -63,3 +63,39 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato',
   console.log('✅ ¡Preguntas recibidas exitosamente!');
   return parsearYValidar(arr, cantidad);
 }
+
+export async function generarPreguntasDeYoutube({ urlYoutube, cantidad, nivel = 'bachillerato' }) {
+  if (!urlYoutube) throw new Error('Debes proporcionar una URL de YouTube.');
+
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+  const endpoint = `${apiBase}/api/youtube`;
+
+  console.log(`🎬 Extrayendo transcripción de YouTube → ${endpoint}`);
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urlYoutube, cantidad, nivel }),
+    });
+  } catch (networkErr) {
+    throw new Error(`No se pudo conectar con el servidor: ${networkErr.message}`);
+  }
+
+  if (!response.ok) {
+    let errorBody = '';
+    try { const j = await response.json(); errorBody = j.error || ''; } catch { errorBody = await response.text(); }
+    throw new Error(errorBody || `Error del servidor: ${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const txt = await response.text();
+    throw new Error(`Respuesta inesperada del servidor. Detalle: ${txt.substring(0, 100)}`);
+  }
+
+  const arr = await response.json();
+  console.log('✅ ¡Preguntas del video recibidas!');
+  return parsearYValidar(arr, cantidad || 10);
+}
