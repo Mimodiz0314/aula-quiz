@@ -90,8 +90,15 @@ export default function Join({ onJoined }) {
         .bg-gameBg { background-color: #46178f; }
       `}</style>
 
-      <header className="mb-8 text-center text-white">
-        <h1 className="text-5xl md:text-6xl font-black italic tracking-tighter">
+      <header className="mb-6 flex flex-col items-center text-center text-white">
+        <div className="bg-white p-4 rounded-3xl shadow-xl mb-4 border-b-4 border-mist/60 animate-pulse-soft">
+          <img 
+            src="/logo.png" 
+            alt="EduMaster Pro" 
+            className="h-16 md:h-20 w-auto object-contain"
+          />
+        </div>
+        <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter drop-shadow-sm">
           Aula<span className="text-kahootYellow">!</span>
         </h1>
       </header>

@@ -3,9 +3,19 @@ import { Link } from 'react-router-dom';
 export default function Home() {
   return (
     <main className="relative min-h-screen flex flex-col bg-gameBg">
-      {/* Encabezado */}
+      {/* Encabezado con Co-Branding */}
       <header className="px-6 md:px-12 pt-8 flex items-center justify-between">
-        <div className="font-black text-2xl tracking-tighter italic">Aula<span className="text-kahootBlue">!</span></div>
+        <div className="flex items-center gap-3 select-none">
+          <img 
+            src="/logo.png" 
+            alt="EduMaster Pro Logo" 
+            className="h-10 w-auto object-contain drop-shadow-sm transition-transform hover:scale-105 duration-200" 
+          />
+          <div className="h-6 w-[2px] bg-mist"></div>
+          <div className="font-black text-2xl tracking-tighter italic text-ink">
+            Aula<span className="text-kahootBlue">!</span>
+          </div>
+        </div>
         <div className="font-bold text-xs tracking-[0.2em] uppercase text-ink/40 bg-mist/50 px-3 py-1 rounded-full">
           v2.0 · Gamificado
         </div>
@@ -62,9 +72,16 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="px-6 md:px-12 py-6 font-bold text-xs tracking-widest uppercase text-ink/40 flex justify-between bg-white border-t border-mist/50">
-        <span>Diseñado para enganchar</span>
-        <span>Preguntas generadas por IA</span>
+      <footer className="px-6 md:px-12 py-6 font-bold text-xs tracking-widest uppercase text-ink/40 flex flex-col md:flex-row justify-between items-center gap-4 bg-white border-t border-mist/50">
+        <div className="flex items-center gap-2">
+          <span>Diseñado para enganchar</span>
+          <span className="hidden md:inline text-mist">•</span>
+          <span>Preguntas generadas por IA</span>
+        </div>
+        <div className="flex items-center gap-1.5 opacity-75">
+          <span>Una solución de</span>
+          <span className="font-black text-orange-500 tracking-tight">EduMaster Pro</span>
+        </div>
       </footer>
     </main>
   );
