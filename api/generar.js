@@ -54,18 +54,6 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       apiKey: process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY,
       model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'Cerebras',
-      endpoint: 'https://api.cerebras.ai/v1/chat/completions',
-      apiKey: process.env.CEREBRAS_API_KEY || process.env.VITE_CEREBRAS_API_KEY,
-      model: 'llama3.1-70b'
-    },
-    {
-      name: 'DeepSeek',
-      endpoint: 'https://api.deepseek.com/v1/chat/completions',
-      apiKey: process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY,
-      model: 'deepseek-chat'
     }
   ];
 

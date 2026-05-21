@@ -105,7 +105,7 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' 
     console.warn("⚠️ No se pudo obtener respuesta del servidor /api/generar. Usando fallback en cliente...", err);
   }
 
-  // Intento 2 (Fallback): Llamada directa desde el navegador (funciona perfecto en Localhost con el proxy gratuito)
+  // Intento 2 (Fallback): Llamada directa desde el navegador (usando proxy cors.lol)
   const system = buildSystemPrompt(cantidad);
   const user = `Tema: ${tema}\nNivel del estudiante: ${nivel}\nGenera ${cantidad} preguntas siguiendo estrictamente el formato JSON especificado.`;
 
@@ -115,18 +115,6 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' 
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       apiKey: import.meta.env.VITE_GROQ_API_KEY,
       model: 'llama-3.3-70b-versatile'
-    },
-    {
-      name: 'Cerebras',
-      endpoint: 'https://api.cerebras.ai/v1/chat/completions',
-      apiKey: import.meta.env.VITE_CEREBRAS_API_KEY,
-      model: 'llama3.1-70b'
-    },
-    {
-      name: 'DeepSeek',
-      endpoint: 'https://api.deepseek.com/v1/chat/completions',
-      apiKey: import.meta.env.VITE_DEEPSEEK_API_KEY,
-      model: 'deepseek-chat'
     }
   ];
 
@@ -140,17 +128,14 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' 
     try {
       console.log(`🤖 Intentando generar preguntas con ${provider.name} en el cliente...`);
       
-      // Para evitar que el navegador envíe una petición preflight (OPTIONS) que falle CORS,
-      // pasamos los encabezados de autorización y content-type como parámetros de consulta (reqHeaders)
-      // y enviamos la petición con Content-Type: text/plain. El proxy se encarga de reescribirlos al destino.
-      const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(provider.endpoint)}` +
-                       `&reqHeaders=authorization:Bearer%20${provider.apiKey}` +
-                       `&reqHeaders=content-type:application/json`;
+      // Usamos el proxy libre api.cors.lol que soporta solicitudes preflight de producción.
+      const proxyUrl = `https://api.cors.lol/?url=${encodeURIComponent(provider.endpoint)}`;
 
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'text/plain' // Evita el preflight de CORS en el navegador
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.apiKey}`
         },
         body: JSON.stringify({
           model: provider.model,
