@@ -28,38 +28,43 @@ export default function TeacherHistory({ onClose }) {
   };
 
   return (
-    <div className="mt-8 border-t border-ink/10 pt-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="font-display text-3xl">Historial de Sesiones</h2>
+    <div className="mt-8 bg-white rounded-3xl p-8 shadow-sm animate-slide-up">
+      <div className="flex justify-between items-center mb-8 border-b border-mist pb-4">
+        <h2 className="font-black text-3xl">Historial de Sesiones</h2>
         {onClose && (
-          <button onClick={onClose} className="text-sm font-mono uppercase tracking-widest text-ink/60 hover:text-ink">
-            Ocultar ↑
+          <button onClick={onClose} className="btn-ghost text-deny hover:bg-deny/10">
+            Cerrar Historial
           </button>
         )}
       </div>
 
       {cargando ? (
-        <p className="text-ink/60">Cargando historial...</p>
+        <p className="text-ink/60 font-bold text-center py-8">Cargando historial...</p>
       ) : historial.length === 0 ? (
-        <p className="text-ink/60">No tienes sesiones anteriores.</p>
+        <p className="text-ink/60 font-bold text-center py-8">No tienes juegos anteriores.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {historial.map((sesion) => (
-            <div key={sesion.pin} className="p-6 bg-bone border border-ink/10 rounded-2xl flex justify-between items-center hover:border-ink/30 transition-all">
-              <div>
-                <div className="font-display text-2xl">PIN: {sesion.pin}</div>
-                <div className="text-sm text-ink/60 mt-1">
-                  {formatDate(sesion.creada_en)} · {sesion.preguntas?.length || 0} preguntas
+            <div key={sesion.pin} className="p-6 bg-gameBg border-2 border-mist rounded-2xl flex flex-col justify-between hover:border-kahootBlue transition-all group">
+              <div className="mb-4">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="font-black text-3xl text-kahootBlue tracking-wider">{sesion.pin}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white ${sesion.estado_actual === ESTADOS.RESULTADOS_FINALES ? 'bg-kahootGreen' : 'bg-kahootYellow text-ink'}`}>
+                    {sesion.estado_actual === ESTADOS.RESULTADOS_FINALES ? 'Terminado' : 'Activo'}
+                  </span>
                 </div>
-                <div className="mt-2 inline-block px-2 py-1 bg-ink/5 rounded text-xs font-mono uppercase tracking-wider">
-                  {sesion.estado_actual === ESTADOS.RESULTADOS_FINALES ? 'Finalizada' : 'Activa/Pausada'}
+                <div className="text-sm font-bold text-ink/60">
+                  {formatDate(sesion.creada_en)}
+                </div>
+                <div className="text-sm font-bold text-ink/60 mt-1">
+                  {sesion.preguntas?.length || 0} preguntas
                 </div>
               </div>
               <button
                 onClick={() => navigate(`/docente/${sesion.pin}`)}
-                className="btn-ghost"
+                className="btn-primary w-full bg-kahootBlue opacity-90 group-hover:opacity-100"
               >
-                Ver →
+                Abrir Sala
               </button>
             </div>
           ))}

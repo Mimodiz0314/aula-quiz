@@ -24,15 +24,15 @@ export default function Join({ onJoined }) {
 
   async function handleValidarPin() {
     setError(null);
-    if (!/^\d{5}$/.test(pin)) return setError('Debe tener exactamente 5 dígitos.');
+    if (!/^\d{5}$/.test(pin)) return setError('El PIN debe tener 5 números.');
     setCargando(true);
     try {
       const r = await validarPin(pin);
       if (!r.ok) {
         setError(
           r.reason === 'no_existe'
-            ? 'No existe una sesión con ese código.'
-            : 'Esa sesión ya terminó.'
+            ? 'No encontramos ese juego.'
+            : 'El juego ya terminó.'
         );
         return;
       }
@@ -45,7 +45,7 @@ export default function Join({ onJoined }) {
   async function handleEntrar() {
     setError(null);
     if (!nombre.trim()) return setError('Escribe tu nombre.');
-    if (!grado.trim()) return setError('Indica tu grado.');
+    if (!grado.trim()) return setError('Indica tu curso/grado.');
     setCargando(true);
     try {
       const studentId = await registrarEstudiante(pin, nombre.trim(), grado.trim());
@@ -69,7 +69,6 @@ export default function Join({ onJoined }) {
         setError('La sesión anterior ya no existe.');
         return;
       }
-      // Re-registra (la función detecta nombre coincidente y reutiliza ID).
       const studentId = await registrarEstudiante(
         reconectable.pin,
         reconectable.nombre,
@@ -84,30 +83,29 @@ export default function Join({ onJoined }) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col p-6">
-      <header className="flex justify-between items-baseline mb-12">
-        <div className="font-display text-xl">Aula<span className="text-ink/40">.</span></div>
-        <div className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-          Estudiante
-        </div>
+    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gameBg bg-[#46178f]">
+      {/* Estilo de fondo morado clásico Kahoot para pantallas de entrada */}
+      <style>{`
+        body { background-color: #46178f; }
+        .bg-gameBg { background-color: #46178f; }
+      `}</style>
+
+      <header className="mb-8 text-center text-white">
+        <h1 className="text-5xl md:text-6xl font-black italic tracking-tighter">
+          Aula<span className="text-kahootYellow">!</span>
+        </h1>
       </header>
 
-      <section className="flex-1 flex items-center">
-        <div className="w-full max-w-md mx-auto">
+      <section className="w-full max-w-sm animate-bounce-in">
+        <div className="game-card p-8">
           {reconectable && paso === 'pin' && (
-            <div className="mb-10 p-5 rounded-2xl border border-ink/15 bg-mist/40">
-              <p className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-                Sesión anterior detectada
-              </p>
-              <p className="font-display text-2xl mt-2">
-                {reconectable.nombre} · PIN {reconectable.pin}
-              </p>
-              <button
-                onClick={handleReconectar}
-                disabled={cargando}
-                className="btn-primary mt-4"
-              >
-                Reconectar →
+            <div className="mb-6 bg-mist/30 p-4 rounded-xl text-center">
+              <p className="text-sm font-bold text-ink/60 uppercase">Sesión anterior</p>
+              <p className="font-bold text-xl mt-1">{reconectable.nombre}</p>
+              <p className="text-ink/60 font-bold mb-4">PIN {reconectable.pin}</p>
+              
+              <button onClick={handleReconectar} disabled={cargando} className="btn-primary w-full">
+                Reconectar
               </button>
               <button
                 onClick={() => {
@@ -115,7 +113,7 @@ export default function Join({ onJoined }) {
                   sessionStorage.removeItem('last_pin');
                   setReconectable(null);
                 }}
-                className="ml-2 text-xs text-ink/50 underline"
+                className="mt-3 text-sm font-bold text-ink/50 underline block w-full text-center"
               >
                 Ignorar
               </button>
@@ -123,86 +121,57 @@ export default function Join({ onJoined }) {
           )}
 
           {paso === 'pin' ? (
-            <>
-              <p className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-                Paso 01 — Código
-              </p>
-              <h1 className="font-display text-5xl md:text-6xl mt-2 leading-none">
-                Ingresa el PIN
-              </h1>
+            <div className="flex flex-col gap-4">
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={5}
-                className="field mt-8 text-center tracking-[0.4em] tabular-nums"
+                className="field font-black"
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                placeholder="•••••"
+                placeholder="PIN del Juego"
                 autoFocus
               />
               {error && (
-                <p className="text-deny text-sm mt-3 border-l-2 border-deny pl-3">{error}</p>
+                <p className="text-deny font-bold text-center bg-deny/10 py-2 rounded">{error}</p>
               )}
               <button
                 onClick={handleValidarPin}
                 disabled={cargando || pin.length !== 5}
-                className="btn-primary mt-10 w-full"
+                className="btn-primary w-full bg-ink"
               >
-                {cargando ? 'Verificando…' : 'Continuar →'}
+                {cargando ? 'Buscando...' : 'Ingresar'}
               </button>
-            </>
+            </div>
           ) : (
-            <>
-              <p className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-                Paso 02 — Tus datos
-              </p>
-              <h1 className="font-display text-5xl md:text-6xl mt-2 leading-none">
-                ¿Quién eres?
-              </h1>
-
-              <div className="mt-10 space-y-8">
-                <div>
-                  <label className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-                    Nombre
-                  </label>
-                  <input
-                    className="field"
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    placeholder="Nombre y apellido"
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-                    Grado
-                  </label>
-                  <input
-                    className="field"
-                    value={grado}
-                    onChange={(e) => setGrado(e.target.value)}
-                    placeholder="Ej. 9°B"
-                  />
-                </div>
-              </div>
-
+            <div className="flex flex-col gap-4">
+              <input
+                className="field"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Tu Nombre"
+                autoFocus
+              />
+              <input
+                className="field"
+                value={grado}
+                onChange={(e) => setGrado(e.target.value)}
+                placeholder="Curso (Ej: 9A)"
+              />
               {error && (
-                <p className="text-deny text-sm mt-6 border-l-2 border-deny pl-3">{error}</p>
+                <p className="text-deny font-bold text-center bg-deny/10 py-2 rounded">{error}</p>
               )}
-
-              <div className="mt-10 flex gap-3">
-                <button onClick={() => setPaso('pin')} className="btn-ghost">
-                  ← Atrás
-                </button>
-                <button
-                  onClick={handleEntrar}
-                  disabled={cargando}
-                  className="btn-primary flex-1"
-                >
-                  {cargando ? 'Uniéndome…' : 'Unirme →'}
-                </button>
-              </div>
-            </>
+              <button
+                onClick={handleEntrar}
+                disabled={cargando}
+                className="btn-primary w-full bg-ink"
+              >
+                {cargando ? 'Entrando...' : '¡Listo, vamos!'}
+              </button>
+              <button onClick={() => setPaso('pin')} className="text-ink/50 font-bold text-sm underline text-center mt-2">
+                Cambiar PIN
+              </button>
+            </div>
           )}
         </div>
       </section>

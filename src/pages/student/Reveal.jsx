@@ -9,62 +9,68 @@ export default function Reveal({ sesion, yo }) {
   const sinRespuesta = miRespuesta === undefined;
 
   useEffect(() => {
-    // Retroalimentación háptica
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       if (acerto) {
-        navigator.vibrate([100, 50, 100]); // Vibración feliz (corta doble)
+        navigator.vibrate([100, 50, 100]);
       } else if (!sinRespuesta) {
-        navigator.vibrate([300]); // Vibración larga (error)
+        navigator.vibrate([300]);
       }
     }
   }, [acerto, sinRespuesta]);
 
   return (
     <main
-      className={`min-h-screen flex flex-col items-center justify-center p-6 text-center transition-colors duration-150 ${
-        sinRespuesta ? 'bg-bone' : acerto ? 'reveal-affirm' : 'reveal-deny'
+      className={`min-h-screen flex flex-col items-center justify-center p-6 text-center transition-colors duration-300 ${
+        sinRespuesta ? 'bg-gameBg text-ink' : acerto ? 'bg-kahootGreen text-white' : 'bg-kahootRed text-white'
       }`}
     >
-      <p
-        className={`font-mono text-[11px] tracking-[0.25em] uppercase ${
-          sinRespuesta ? 'text-ink/60' : 'text-bone/70'
-        }`}
-      >
-        {sinRespuesta
-          ? 'No registraste respuesta'
-          : acerto
-          ? '✓ Acierto'
-          : '✗ Incorrecta'}
-      </p>
-
-      <h1 className="font-display text-6xl md:text-8xl mt-4 leading-none tracking-tight">
-        {sinRespuesta ? '—' : acerto ? '¡Correcta!' : 'Incorrecta'}
-      </h1>
-
-      <div
-        className={`mt-12 max-w-md p-6 rounded-2xl ${
-          sinRespuesta ? 'border border-ink/15' : 'bg-black/15'
-        }`}
-      >
-        <p
-          className={`font-mono text-[10px] tracking-[0.2em] uppercase ${
-            sinRespuesta ? 'text-ink/60' : 'text-bone/70'
+      <header className="absolute top-4 left-4">
+        <button 
+          onClick={() => window.location.href = '/'}
+          className={`px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors ${
+            sinRespuesta ? 'bg-white text-ink hover:bg-mist' : 'bg-white/20 text-white hover:bg-white/30'
           }`}
         >
-          Respuesta correcta
-        </p>
-        <p className="font-display text-2xl md:text-3xl mt-2">
-          {pregunta.opciones[pregunta.correcta]}
-        </p>
-      </div>
+          ⌂ Inicio
+        </button>
+      </header>
 
-      <p
-        className={`mt-12 font-mono text-[10px] tracking-[0.2em] uppercase ${
-          sinRespuesta ? 'text-ink/50' : 'text-bone/60'
-        }`}
-      >
-        Esperando al docente…
-      </p>
+      <div className="animate-bounce-in flex flex-col items-center">
+        <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-lg ${
+          sinRespuesta ? 'bg-mist text-ink/50' : 'bg-white/20 text-white'
+        }`}>
+          {sinRespuesta ? (
+            <span className="text-4xl font-black">?</span>
+          ) : acerto ? (
+            <span className="text-6xl font-black">✓</span>
+          ) : (
+            <span className="text-6xl font-black">✕</span>
+          )}
+        </div>
+
+        <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-2">
+          {sinRespuesta ? '¡Tiempo agotado!' : acerto ? '¡Correcto!' : '¡Incorrecto!'}
+        </h1>
+        
+        <p className={`font-bold text-lg md:text-xl uppercase tracking-widest ${
+          sinRespuesta ? 'text-ink/50' : 'text-white/80'
+        }`}>
+          {sinRespuesta ? 'No respondiste' : acerto ? 'Sigue así' : 'A la próxima'}
+        </p>
+
+        <div className={`mt-12 w-full max-w-sm p-6 rounded-2xl shadow-md ${
+          sinRespuesta ? 'bg-white' : 'bg-black/20'
+        }`}>
+          <p className={`font-bold text-sm uppercase tracking-wider mb-2 ${
+            sinRespuesta ? 'text-ink/50' : 'text-white/60'
+          }`}>
+            Respuesta correcta
+          </p>
+          <p className="text-2xl md:text-3xl font-black">
+            {pregunta.opciones[pregunta.correcta]}
+          </p>
+        </div>
+      </div>
     </main>
   );
 }

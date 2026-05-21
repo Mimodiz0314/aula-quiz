@@ -13,97 +13,88 @@ export default function Lobby({ pin, sesion }) {
   }
 
   return (
-    <main className="min-h-screen px-6 md:px-16 py-12">
-      <header className="flex justify-between items-baseline mb-12">
-        <div className="font-display text-xl">Aula<span className="text-ink/40">.</span></div>
-        <button onClick={handleCerrar} className="btn-ghost">Cerrar sesión</button>
+    <main className="min-h-screen p-6 md:p-12 bg-gameBg flex flex-col">
+      <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate('/')}
+            className="btn-ghost"
+          >
+            ⌂ Inicio
+          </button>
+          <div className="font-black text-xl italic tracking-tighter">
+            Aula<span className="text-kahootRed">!</span>
+          </div>
+        </div>
+        <button onClick={handleCerrar} className="btn-ghost text-deny hover:bg-deny/10">Cerrar sala</button>
       </header>
 
-      <section className="grid lg:grid-cols-[1.2fr_1fr] gap-12">
-        {/* PIN gigante */}
-        <div>
-          <div className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-            Código de acceso
-          </div>
-          <div className="font-display font-light text-[clamp(6rem,18vw,14rem)] leading-[0.85] tracking-tight mt-2">
-            {pin}
-          </div>
-          <p className="text-ink/60 mt-6 max-w-md">
-            Comparte este código con tus estudiantes. Pueden ingresar desde
-            cualquier dispositivo en <span className="font-mono">/jugar</span>.
+      <div className="flex-1 grid lg:grid-cols-[1fr_300px] gap-8">
+        
+        {/* Proyector PIN Central */}
+        <section className="flex flex-col items-center justify-center bg-white rounded-3xl shadow-sm p-8 text-center border-t-8 border-kahootBlue relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-kahootYellow/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+          
+          <p className="font-bold text-ink/50 uppercase tracking-widest mb-4">
+            Únete en <span className="text-ink">aula-b1e1b.web.app/jugar</span>
           </p>
-
-          <div className="mt-12 space-y-6">
-            <div className="flex items-center gap-4 max-w-md">
-              <label className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60 w-44">
-                Duración por pregunta
-              </label>
-              <input
-                type="number"
-                min={5}
-                max={300}
-                value={duracion}
-                onChange={(e) => setDuracion(pin, Number(e.target.value))}
-                className="w-24 bg-transparent border-b-2 border-ink/20 focus:border-ink font-display text-2xl py-1 outline-none text-center"
-              />
-              <span className="text-ink/60">seg.</span>
+          
+          <div className="bg-gameBg px-12 py-6 rounded-3xl shadow-inner mb-8">
+            <p className="font-bold text-ink/40 uppercase tracking-widest text-sm mb-2">PIN del Juego</p>
+            <div className="font-black text-7xl md:text-9xl tracking-[0.1em] text-ink">
+              {pin}
             </div>
-
-            <button
-              onClick={() => iniciarSesion(pin)}
-              disabled={estudiantes.length === 0}
-              className="btn-primary"
-            >
-              Iniciar evaluación →
-            </button>
-            {estudiantes.length === 0 && (
-              <p className="text-xs text-ink/40 font-mono tracking-wider uppercase">
-                Esperando al menos un estudiante…
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Lista de estudiantes */}
-        <div className="border-l border-ink/10 lg:pl-12">
-          <div className="flex items-baseline justify-between">
-            <div className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink/60">
-              Conectados
-            </div>
-            <div className="font-display text-3xl">{estudiantes.length}</div>
           </div>
 
-          <ul className="mt-6 space-y-2 max-h-[60vh] overflow-y-auto">
-            {estudiantes.length === 0 && (
-              <li className="text-ink/40 italic">Nadie se ha unido aún.</li>
-            )}
-            {estudiantes.map(([id, est], i) => (
-              <li
-                key={id}
-                className="flex items-center justify-between py-3 px-4 rounded-xl bg-mist/40 animate-slide-up"
-                style={{ animationDelay: `${i * 40}ms` }}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      est.conectado ? 'bg-affirm' : 'bg-ink/20'
-                    }`}
-                  />
-                  <span className="font-display text-xl">{est.nombre}</span>
+          <div className="flex items-center gap-4 mb-8 bg-mist/30 p-2 rounded-xl">
+            <span className="font-bold text-sm text-ink/60 pl-4 uppercase tracking-wider">Tiempo (seg)</span>
+            <input
+              type="number"
+              min={5}
+              max={300}
+              value={duracion}
+              onChange={(e) => setDuracion(pin, Number(e.target.value))}
+              className="w-20 bg-white rounded-lg font-black text-xl py-2 text-center shadow-sm border border-mist"
+            />
+          </div>
+
+          <button
+            onClick={() => iniciarSesion(pin)}
+            disabled={estudiantes.length === 0}
+            className="btn-primary text-xl px-12 py-6 bg-kahootGreen w-full max-w-sm"
+          >
+            ¡Empezar!
+          </button>
+        </section>
+
+        {/* Panel lateral Estudiantes */}
+        <section className="bg-white rounded-3xl shadow-sm flex flex-col overflow-hidden border-t-8 border-kahootRed">
+          <div className="p-6 border-b border-mist bg-mist/10 flex justify-between items-center">
+            <h2 className="font-black text-xl">Jugadores</h2>
+            <div className="bg-ink text-white font-black text-xl px-4 py-1 rounded-full">
+              {estudiantes.length}
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 flex flex-wrap content-start gap-2">
+            {estudiantes.length === 0 ? (
+              <p className="text-ink/40 font-bold text-center w-full mt-10">Esperando jugadores...</p>
+            ) : (
+              estudiantes.map(([id, est], i) => (
+                <div
+                  key={id}
+                  className={`px-4 py-2 rounded-xl font-bold text-sm shadow-sm animate-bounce-in flex items-center gap-2 ${
+                    est.conectado ? 'bg-ink text-white' : 'bg-mist text-ink/50 line-through'
+                  }`}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  {est.nombre}
                 </div>
-                <span className="font-mono text-xs text-ink/50 uppercase tracking-wider">
-                  {est.grado}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <footer className="mt-16 pt-6 border-t border-ink/10 font-mono text-[11px] tracking-[0.15em] uppercase text-ink/40 flex justify-between">
-        <span>{(sesion.preguntas || []).length} preguntas listas</span>
-        <span>Esperando inicio</span>
-      </footer>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
