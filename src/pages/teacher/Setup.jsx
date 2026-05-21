@@ -38,6 +38,11 @@ export default function Setup({ onCreated }) {
     }
   }
 
+  function handleCrearManual() {
+    setPreguntasGeneradas([{ pregunta: '', opciones: ['', '', '', ''], correcta: 0 }]);
+    setPaso('revisando');
+  }
+
   async function handleCrearSalaConfirmada(preguntasFinales) {
     setCargando(true);
     try {
@@ -147,9 +152,14 @@ export default function Setup({ onCreated }) {
             <p className="font-bold text-sm uppercase text-ink/40 tracking-widest">
               El proceso tarda aprox. 10-15s
             </p>
-            <button onClick={handleGenerar} disabled={cargando} className="btn-primary px-12 bg-kahootBlue">
-              {cargando ? estadoTexto(paso) : 'Generar Preguntas ✨'}
-            </button>
+            <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+              <button onClick={handleCrearManual} disabled={cargando} className="p-4 rounded-xl font-black uppercase tracking-widest bg-white border-4 border-kahootBlue text-kahootBlue hover:bg-kahootBlue/10 transition-all shadow-sm">
+                Crear Manualmente
+              </button>
+              <button onClick={handleGenerar} disabled={cargando} className="btn-primary px-8 bg-kahootBlue">
+                {cargando ? estadoTexto(paso) : 'Generar Preguntas ✨'}
+              </button>
+            </div>
           </div>
         </div>
       </section>
