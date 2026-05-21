@@ -84,9 +84,21 @@ export async function generarPreguntasDeYoutube({ urlYoutube, cantidad, nivel = 
   }
 
   if (!response.ok) {
-    let errorBody = '';
-    try { const j = await response.json(); errorBody = j.error || ''; } catch { errorBody = await response.text(); }
-    throw new Error(errorBody || `Error del servidor: ${response.status}`);
+    let errorMsg = '';
+    let errorCode = null;
+    let errorDebug = null;
+    try {
+      const j = await response.json();
+      errorMsg = j.error || '';
+      errorCode = j.code || null;
+      errorDebug = j.debug || null;
+    } catch {
+      errorMsg = await response.text();
+    }
+    const err = new Error(errorMsg || `Error del servidor: ${response.status}`);
+    if (errorCode) err.code = errorCode;
+    if (errorDebug) err.debug = errorDebug;
+    throw err;
   }
 
   const contentType = response.headers.get('content-type') || '';

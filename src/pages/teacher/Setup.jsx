@@ -18,8 +18,17 @@ export default function Setup({ onCreated }) {
   const [paso, setPaso] = useState('idle');
   const [preguntasGeneradas, setPreguntasGeneradas] = useState([]);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [youtubeErrorBlocked, setYoutubeErrorBlocked] = useState(false);
+  const [mostrarAsistenteManual, setMostrarAsistenteManual] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
+
+  function cambiarModo(nuevoModo) {
+    setModo(nuevoModo);
+    setError(null);
+    setYoutubeErrorBlocked(false);
+    setMostrarAsistenteManual(false);
+  }
 
   async function handleGenerar() {
     setError(null);
@@ -47,6 +56,10 @@ export default function Setup({ onCreated }) {
     } catch (e) {
       console.error(e);
       setError(e.message || 'Error inesperado');
+      if (modo === 'youtube') {
+        setYoutubeErrorBlocked(true);
+        setMostrarAsistenteManual(true);
+      }
       setPaso('idle');
     } finally {
       setCargando(false);
@@ -119,19 +132,19 @@ export default function Setup({ onCreated }) {
 
         <div className="flex flex-wrap gap-2 mb-8 bg-ink/5 p-1 rounded-xl w-fit">
           <button
-            onClick={() => setModo('tema')}
+            onClick={() => cambiarModo('tema')}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'tema' ? 'bg-white shadow-sm text-kahootBlue' : 'text-ink/60 hover:text-ink'}`}
           >
             💡 Por Tema
           </button>
           <button
-            onClick={() => setModo('texto')}
+            onClick={() => cambiarModo('texto')}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'texto' ? 'bg-white shadow-sm text-kahootBlue' : 'text-ink/60 hover:text-ink'}`}
           >
             📋 Pegar Texto
           </button>
           <button
-            onClick={() => setModo('youtube')}
+            onClick={() => cambiarModo('youtube')}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${modo === 'youtube' ? 'bg-white shadow-sm text-red-500' : 'text-ink/60 hover:text-ink'}`}
           >
             🎥 Desde YouTube
@@ -169,25 +182,130 @@ export default function Setup({ onCreated }) {
                 className="field"
                 type="url"
                 value={urlYoutube}
-                onChange={(e) => setUrlYoutube(e.target.value)}
+                onChange={(e) => {
+                  setUrlYoutube(e.target.value);
+                  setYoutubeErrorBlocked(false);
+                }}
                 placeholder="https://www.youtube.com/watch?v=..."
                 disabled={cargando}
                 autoFocus
               />
-              <div className="mt-3 bg-kahootBlue/8 border border-kahootBlue/20 rounded-xl p-4 text-sm text-ink/70 space-y-1">
-                <p className="font-bold text-kahootBlue">✅ Videos que funcionan bien:</p>
-                <ul className="list-disc list-inside space-y-0.5 ml-1">
-                  <li>Videos de canales educativos (Khan Academy, TED, Kurzgesagt…)</li>
-                  <li>Videos con subtítulos generados automáticamente por YouTube</li>
-                  <li>Videos propios subidos con subtítulos cargados</li>
-                </ul>
-                <p className="font-bold text-deny/80 mt-2">❌ No funcionan:</p>
-                <ul className="list-disc list-inside space-y-0.5 ml-1">
-                  <li>Videos donde el dueño desactivó las transcripciones</li>
-                  <li>Videos privados o no listados sin subtítulos</li>
-                </ul>
-                <p className="text-xs mt-2 text-ink/50">💡 Tip: Si un video falla, ve a YouTube, ábrelo y revisa si aparece el ícono CC (Closed Captions) en el reproductor.</p>
-              </div>
+              
+              <button
+                type="button"
+                onClick={() => setMostrarAsistenteManual(!mostrarAsistenteManual)}
+                className="mt-2 text-xs font-black text-kahootBlue hover:text-kahootBlue/80 transition-colors flex items-center gap-1.5 ml-2 cursor-pointer uppercase tracking-wider"
+              >
+                {mostrarAsistenteManual ? '▲ Ocultar Asistente Manual' : '💡 ¿Problemas para extraer? Abre el Asistente Manual'}
+              </button>
+
+              {mostrarAsistenteManual && (
+                <div className="mt-4 bg-gradient-to-br from-amber-50 to-orange-50 border-4 border-amber-400/40 rounded-3xl p-6 shadow-md animate-slide-up space-y-6">
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl leading-none">🧙‍♂️</span>
+                    <div>
+                      <h3 className="font-black text-lg text-amber-800 tracking-tight leading-snug">
+                        Asistente de Transcripción Manual (100% Efectivo)
+                      </h3>
+                      <p className="text-xs font-bold text-amber-700/80 mt-1">
+                        Dado que los servidores de YouTube a veces bloquean los accesos automatizados directos, puedes solucionarlo en 30 segundos siguiendo estos pasos sencillos:
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {/* Paso 1 */}
+                    <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-black text-xs mb-2">1</div>
+                        <h4 className="font-black text-sm text-ink mb-1">Abre el video</h4>
+                        <p className="text-[11px] text-ink/60 font-bold mb-3">
+                          Ve al video original en YouTube.
+                        </p>
+                      </div>
+                      {urlYoutube ? (
+                        <a 
+                          href={urlYoutube} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="w-full text-center py-2 px-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-[10px] transition-colors shadow-sm uppercase tracking-wider"
+                        >
+                          ▶ Ver en YouTube
+                        </a>
+                      ) : (
+                        <div className="w-full text-center py-2 px-3 bg-ink/10 text-ink/40 font-black rounded-xl text-[10px] uppercase tracking-wider">
+                          Escribe un enlace
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Paso 2 */}
+                    <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-black text-xs mb-2">2</div>
+                        <h4 className="font-black text-sm text-ink mb-1">Copia la transcripción</h4>
+                        <p className="text-[11px] text-ink/60 font-bold leading-relaxed mb-3">
+                          Haz clic en <span className="font-black text-ink">"...más"</span> en la descripción del video, luego en <span className="font-black text-ink">"Mostrar transcripción"</span> y copia el texto.
+                        </p>
+                      </div>
+                      <div className="text-center py-2 text-amber-700 bg-amber-100/50 font-black rounded-xl text-[9px] uppercase tracking-wider">
+                        Ctrl+A ➔ Ctrl+C
+                      </div>
+                    </div>
+
+                    {/* Paso 3 */}
+                    <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-black text-xs mb-2">3</div>
+                        <h4 className="font-black text-sm text-ink mb-1">Pégala aquí</h4>
+                        <p className="text-[11px] text-ink/60 font-bold mb-3">
+                          Te redirigimos a la pestaña de texto para pegarlo de inmediato.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModo('texto');
+                          setError(null);
+                          setYoutubeErrorBlocked(false);
+                          setMostrarAsistenteManual(false);
+                        }}
+                        className="w-full text-center py-2 px-3 bg-kahootBlue hover:bg-kahootBlue/90 text-white font-black rounded-xl text-[10px] transition-all shadow-sm uppercase tracking-wider"
+                      >
+                        ⚡ Pegar Texto
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] font-bold text-amber-700/60 pt-2 border-t border-amber-200">
+                    <span>💡 Truco: ¡Este método manual nunca falla!</span>
+                    <button 
+                      type="button"
+                      onClick={() => setMostrarAsistenteManual(false)}
+                      className="hover:underline hover:text-amber-800"
+                    >
+                      Ocultar asistente
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!mostrarAsistenteManual && (
+                <div className="mt-3 bg-kahootBlue/8 border border-kahootBlue/20 rounded-xl p-4 text-sm text-ink/70 space-y-1">
+                  <p className="font-bold text-kahootBlue">✅ Videos que funcionan bien:</p>
+                  <ul className="list-disc list-inside space-y-0.5 ml-1">
+                    <li>Videos de canales educativos (Khan Academy, TED, Kurzgesagt…)</li>
+                    <li>Videos con subtítulos generados automáticamente por YouTube</li>
+                    <li>Videos propios subidos con subtítulos cargados</li>
+                  </ul>
+                  <p className="font-bold text-deny/80 mt-2">❌ No funcionan:</p>
+                  <ul className="list-disc list-inside space-y-0.5 ml-1">
+                    <li>Videos donde el dueño desactivó las transcripciones</li>
+                    <li>Videos privados o no listados sin subtítulos</li>
+                  </ul>
+                  <p className="text-xs mt-2 text-ink/50">💡 Tip: Si un video falla, ve a YouTube, ábrelo y revisa si aparece el ícono CC (Closed Captions) en el reproductor.</p>
+                </div>
+              )}
             </Field>
           )}
 

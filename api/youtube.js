@@ -61,7 +61,11 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('Error obteniendo transcripción:', e.message);
     const mensaje = `No se pudo obtener la transcripción del video. Detalle técnico: ${e.message || e}. Si el video tiene subtítulos, esto puede deberse a un bloqueo temporal de YouTube en el servidor.`;
-    res.status(422).json({ error: mensaje, debug: { message: e.message, stack: e.stack, string: e.toString() } });
+    res.status(422).json({ 
+      error: mensaje, 
+      code: 'YOUTUBE_BLOCKED', 
+      debug: { message: e.message, stack: e.stack, string: e.toString() } 
+    });
     return;
   }
 
