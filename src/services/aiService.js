@@ -74,6 +74,38 @@ function parsearYValidar(raw, cantidad) {
 export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato' }) {
   if (!tema || cantidad < 1) throw new Error('Parámetros inválidos.');
 
+  // Intento 1: Intentar llamar a nuestra API serverless /api/generar (ideal para producción)
+  try {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const vercelApiUrl = import.meta.env.VITE_VERCEL_API_URL || '';
+    const apiEndpoint = vercelApiUrl ? `${vercelApiUrl}/api/generar` : '/api/generar';
+
+    // Intentamos usar el backend si estamos en producción, o si VITE_VERCEL_API_URL está explícitamente configurada
+    if (!isLocalhost || vercelApiUrl) {
+      console.log(`🤖 Intentando generar preguntas desde el servidor (${apiEndpoint})...`);
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tema, cantidad, nivel })
+      });
+
+      if (response.ok) {
+        const arr = await response.json();
+        console.log("✅ ¡Preguntas generadas exitosamente desde el servidor!");
+        // Re-usamos parsearYValidar pasándole el string JSON del array
+        return parsearYValidar(JSON.stringify(arr), cantidad);
+      } else {
+        const txt = await response.text();
+        console.warn(`⚠️ El servidor de API devolvió un error: ${response.status} - ${txt}. Usando fallback...`);
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ No se pudo obtener respuesta del servidor /api/generar. Usando fallback en cliente...", err);
+  }
+
+  // Intento 2 (Fallback): Llamada directa desde el navegador (funciona perfecto en Localhost con el proxy gratuito)
   const system = buildSystemPrompt(cantidad);
   const user = `Tema: ${tema}\nNivel del estudiante: ${nivel}\nGenera ${cantidad} preguntas siguiendo estrictamente el formato JSON especificado.`;
 
