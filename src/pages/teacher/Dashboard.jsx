@@ -38,6 +38,109 @@ export default function Dashboard({ pin, sesion }) {
     navigate('/');
   }
 
+  function exportarExcel() {
+    const totalEstudiantes = filas.length;
+    const promedioFormateado = promedio.toFixed(1);
+    const aprobadosFormateado = `${aprobados}/${totalEstudiantes}`;
+    
+    // Generar las filas de estudiantes para la tabla HTML
+    const filasHTML = filas.map((f, i) => {
+      const fallidas = total - f.aciertos;
+      const porcentaje = total > 0 ? Math.round((f.aciertos / total) * 100) : 0;
+      const notaFormateada = parseFloat(f.nota.toFixed(1));
+      const colorNota = f.nota >= 3.0 ? '#26890c' : '#e21b3c';
+      const bgColor = i % 2 === 0 ? '#ffffff' : '#f3f0f7'; // Alternancia de color sutil estilo púrpura
+
+      return `
+        <tr style="background-color: ${bgColor};">
+          <td style="padding: 10px; border: 1px solid #dddddd; text-align: center; font-weight: bold; color: #666666;">${i + 1}</td>
+          <td style="padding: 10px; border: 1px solid #dddddd; text-align: left; font-weight: bold; color: #111111;">${f.nombre}</td>
+          <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: 900; font-size: 12pt; color: ${colorNota};">${notaFormateada}</td>
+          <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: bold; color: #555555;">${porcentaje}%</td>
+          <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: bold; color: #26890c;">${f.aciertos}</td>
+          <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: bold; color: #e21b3c;">${fallidas}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; }
+          th { font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <!-- Banner superior estilo Aula! -->
+        <table style="margin-bottom: 20px;">
+          <tr>
+            <td colspan="6" style="background-color: #46178f; color: #ffffff; text-align: center; padding: 15px; font-size: 18pt; font-weight: bold; border-radius: 8px;">
+              Aula! - Reporte de Resultados
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" style="padding: 8px 0; font-size: 10pt; color: #666666; font-weight: bold;">
+              PIN de Juego: <span style="color: #46178f; font-size: 12pt; font-weight: 900;">${pin}</span>
+            </td>
+            <td colspan="3" style="padding: 8px 0; font-size: 10pt; color: #666666; text-align: right; font-weight: bold;">
+              Generado el: ${new Date().toLocaleString('es-CO')}
+            </td>
+          </tr>
+        </table>
+
+        <!-- Resumen de estadísticas clave -->
+        <table style="margin-bottom: 25px; border: 1px solid #dddddd;">
+          <tr style="background-color: #f3f0f7;">
+            <th colspan="6" style="padding: 8px; text-align: left; font-size: 11pt; color: #46178f; border-bottom: 1px solid #dddddd;">
+              Resumen General
+            </th>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dddddd; font-weight: bold; background-color: #fdfdfd;">Estudiantes:</td>
+            <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: 900; color: #15aabf;">${totalEstudiantes}</td>
+            <td style="padding: 10px; border: 1px solid #dddddd; font-weight: bold; background-color: #fdfdfd;">Preguntas:</td>
+            <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: 900; color: #777777;">${total}</td>
+            <td style="padding: 10px; border: 1px solid #dddddd; font-weight: bold; background-color: #fdfdfd;">Promedio General:</td>
+            <td style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: 900; color: #d89614; font-size: 12pt;">${promedioFormateado}</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="padding: 10px; border: 1px solid #dddddd; font-weight: bold; background-color: #fdfdfd;">Estudiantes Aprobados (Nota &gt;= 3.0):</td>
+            <td colspan="3" style="padding: 10px; border: 1px solid #dddddd; text-align: right; font-weight: 900; color: #26890c; font-size: 12pt;">${aprobadosFormateado}</td>
+          </tr>
+        </table>
+
+        <!-- Tabla principal de resultados -->
+        <table>
+          <thead>
+            <tr style="background-color: #46178f; color: #ffffff;">
+              <th style="padding: 12px 8px; border: 1px solid #46178f; text-align: center; font-weight: bold; width: 60px;">No.</th>
+              <th style="padding: 12px 8px; border: 1px solid #46178f; text-align: left; font-weight: bold;">Nombre del Estudiante</th>
+              <th style="padding: 12px 8px; border: 1px solid #46178f; text-align: right; font-weight: bold; width: 180px;">Calificación (1.0 - 5.0)</th>
+              <th style="padding: 12px 8px; border: 1px solid #46178f; text-align: right; font-weight: bold; width: 180px;">% Porcentaje Adquirido</th>
+              <th style="padding: 12px 8px; border: 1px solid #46178f; text-align: right; font-weight: bold; width: 120px;">Aciertos</th>
+              <th style="padding: 12px 8px; border: 1px solid #46178f; text-align: right; font-weight: bold; width: 120px;">Fallidas</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasHTML}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\uFEFF' + htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resultados-${pin}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function exportarCSV() {
     const head = 'No.,Nombre del Estudiante,Calificación (1.0 - 5.0),% Porcentaje Adquirido,Aciertos,Fallidas\n';
     const body = filas
@@ -64,7 +167,7 @@ export default function Dashboard({ pin, sesion }) {
     <main className="min-h-screen p-6 md:p-12 flex flex-col bg-gameBg">
       <header className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm mb-8">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="btn-ghost">⌂ Inicio</button>
+          <button onClick={() => navigate('/')} className="btn-ghost no-print">⌂ Inicio</button>
           <div className="font-bold text-sm tracking-widest uppercase text-ink/50 bg-mist/50 px-3 py-1 rounded-full">
             Resultados · PIN {pin}
           </div>
@@ -176,12 +279,39 @@ export default function Dashboard({ pin, sesion }) {
             <Stat label="Aprobados" value={`${aprobados}/${filas.length}`} color="bg-kahootGreen" />
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-3">
-            <button onClick={exportarCSV} className="btn-secondary w-full">Descargar CSV</button>
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-3 no-print">
+            <h4 className="font-black text-lg text-ink tracking-tight border-b border-mist pb-2">
+              Exportar Reporte
+            </h4>
+            
+            <button 
+              onClick={() => window.print()} 
+              className="btn-secondary w-full flex items-center justify-center gap-2 hover:bg-mist/5"
+            >
+              📄 Descargar PDF
+            </button>
+            
+            <button 
+              onClick={exportarExcel} 
+              className="btn-secondary w-full flex items-center justify-center gap-2 text-kahootGreen border-kahootGreen/30 hover:bg-kahootGreen/5"
+            >
+              📊 Descargar Excel
+            </button>
+            
+            <button 
+              onClick={exportarCSV} 
+              className="btn-secondary w-full flex items-center justify-center gap-2 text-ink/75 hover:bg-mist/5"
+            >
+              📝 Descargar CSV
+            </button>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-3 no-print">
             <button onClick={handleCerrar} className="btn-primary bg-kahootRed w-full">Cerrar Sesión</button>
           </div>
         </aside>
       </div>
+
     </main>
   );
 }

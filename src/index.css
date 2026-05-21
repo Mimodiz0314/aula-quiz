@@ -100,3 +100,66 @@ body {
   color: white;
   transition: background-color 200ms ease-out, color 200ms ease-out;
 }
+
+/* --- Estilos de Impresión (PDF) --- */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  main {
+    padding: 1rem !important;
+    background: transparent !important;
+  }
+  
+  /* Forzar colores de fondo y bordes en impresión */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Ajustar grid principal para fluir verticalmente en una sola página */
+  .grid {
+    display: block !important;
+  }
+  
+  section {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 2rem !important;
+  }
+  
+  aside {
+    display: block !important;
+    width: 100% !important;
+    margin-top: 2rem !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Formatear tarjetas de estadísticas para impresión en cuadrícula horizontal */
+  aside > div:first-child {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 1rem !important;
+    background-color: #ffffff !important;
+    border-radius: 1.5rem !important;
+  }
+  
+  aside > div:first-child > div {
+    box-shadow: none !important;
+    padding: 0.75rem !important;
+    border-radius: 1rem !important;
+  }
+}
+
