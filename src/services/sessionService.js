@@ -257,28 +257,25 @@ function setupPresence(pin, studentId) {
  * sólo se acepta si el estado actual sigue siendo "pregunta_activa".
  */
 export async function registrarRespuesta(pin, studentId, preguntaIdx, opcionIdx) {
-  const sesionRef = ref(db, `sesiones/${pin}`);
-  const result = await runTransaction(sesionRef, (sesion) => {
-    if (!sesion) return sesion;
-    // Acepta respuestas mientras la pregunta esté activa O el tiempo haya sido detenido manualmente.
-    // Solo bloquea si ya se reveló la respuesta o se pasó a otra pregunta.
-    const estadosPermitidos = [ESTADOS.PREGUNTA_ACTIVA, ESTADOS.TIEMPO_AGOTADO];
-    if (!estadosPermitidos.includes(sesion.estado_actual)) return; // aborta
-    if (sesion.pregunta_idx !== preguntaIdx) return; // pregunta cambió
-    sesion.estudiantes = sesion.estudiantes || {};
-    sesion.estudiantes[studentId] = sesion.estudiantes[studentId] || {};
-    sesion.estudiantes[studentId].respuestas_registradas =
-      sesion.estudiantes[studentId].respuestas_registradas || {};
+  // 1. Verificamos el estado actual (solo lectura)
+  const snap = await get(ref(db, `sesiones/${pin}`));
+  if (!snap.exists()) return false;
+  const sesion = snap.val();
+  
+  const estadosPermitidos = [ESTADOS.PREGUNTA_ACTIVA, ESTADOS.TIEMPO_AGOTADO];
+  if (!estadosPermitidos.includes(sesion.estado_actual)) return false;
+  if (sesion.pregunta_idx !== preguntaIdx) return false;
+
+  // 2. Realizamos la transacción SOLO en el nodo del estudiante para no violar las reglas
+  const respRef = ref(db, `sesiones/${pin}/estudiantes/${studentId}/respuestas_registradas`);
+  const result = await runTransaction(respRef, (respuestas) => {
+    respuestas = respuestas || {};
     // Bloqueo: una sola respuesta por pregunta.
-    if (
-      sesion.estudiantes[studentId].respuestas_registradas[preguntaIdx] !==
-      undefined
-    ) {
+    if (respuestas[preguntaIdx] !== undefined) {
       return; // ya respondió
     }
-    sesion.estudiantes[studentId].respuestas_registradas[preguntaIdx] =
-      opcionIdx;
-    return sesion;
+    respuestas[preguntaIdx] = opcionIdx;
+    return respuestas;
   });
   return result.committed;
 }
