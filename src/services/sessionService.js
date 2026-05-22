@@ -260,7 +260,10 @@ export async function registrarRespuesta(pin, studentId, preguntaIdx, opcionIdx)
   const sesionRef = ref(db, `sesiones/${pin}`);
   const result = await runTransaction(sesionRef, (sesion) => {
     if (!sesion) return sesion;
-    if (sesion.estado_actual !== ESTADOS.PREGUNTA_ACTIVA) return; // aborta
+    // Acepta respuestas mientras la pregunta esté activa O el tiempo haya sido detenido manualmente.
+    // Solo bloquea si ya se reveló la respuesta o se pasó a otra pregunta.
+    const estadosPermitidos = [ESTADOS.PREGUNTA_ACTIVA, ESTADOS.TIEMPO_AGOTADO];
+    if (!estadosPermitidos.includes(sesion.estado_actual)) return; // aborta
     if (sesion.pregunta_idx !== preguntaIdx) return; // pregunta cambió
     sesion.estudiantes = sesion.estudiantes || {};
     sesion.estudiantes[studentId] = sesion.estudiantes[studentId] || {};

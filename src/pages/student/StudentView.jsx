@@ -67,7 +67,7 @@ export default function StudentView() {
           studentId={studentId}
           sesion={sesion}
           yo={yo}
-          bloqueado={true}
+          bloqueado={false}
         />
       );
     case ESTADOS.RESPUESTA_REVELADA:

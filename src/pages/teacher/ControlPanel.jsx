@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   ESTADOS,
   marcarTiempoAgotado,
@@ -41,17 +41,11 @@ export default function ControlPanel({ pin, sesion }) {
     return c;
   }, [estudiantes, idx]);
 
-  const onExpire = useCallback(() => {
-    if (sesion.estado_actual === ESTADOS.PREGUNTA_ACTIVA) {
-      marcarTiempoAgotado(pin);
-    }
-  }, [sesion.estado_actual, pin]);
-
+  // Sin onExpire automático: el docente controla manualmente cuándo avanzar.
   const restante = useServerTimer(
     sesion.pregunta_inicio_ts,
     sesion.pregunta_duracion,
-    sesion.estado_actual === ESTADOS.PREGUNTA_ACTIVA,
-    onExpire
+    sesion.estado_actual === ESTADOS.PREGUNTA_ACTIVA
   );
 
   if (!pregunta) {
