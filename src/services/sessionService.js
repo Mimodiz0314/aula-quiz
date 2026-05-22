@@ -70,7 +70,7 @@ export async function crearSesion(preguntas) {
       estado_actual: ESTADOS.LOBBY,
       pregunta_idx: -1,
       pregunta_inicio_ts: null,
-      pregunta_duracion: 30, // segundos por defecto
+      pregunta_duracion: 0, // 0 = Sin límite de tiempo
       preguntas,
       estudiantes: {},
     });
