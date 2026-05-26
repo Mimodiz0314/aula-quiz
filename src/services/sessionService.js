@@ -266,18 +266,10 @@ export async function registrarRespuesta(pin, studentId, preguntaIdx, opcionIdx)
   if (!estadosPermitidos.includes(sesion.estado_actual)) return false;
   if (sesion.pregunta_idx !== preguntaIdx) return false;
 
-  // 2. Realizamos la transacción SOLO en el nodo del estudiante para no violar las reglas
-  const respRef = ref(db, `sesiones/${pin}/estudiantes/${studentId}/respuestas_registradas`);
-  const result = await runTransaction(respRef, (respuestas) => {
-    respuestas = respuestas || {};
-    // Bloqueo: una sola respuesta por pregunta.
-    if (respuestas[preguntaIdx] !== undefined) {
-      return; // ya respondió
-    }
-    respuestas[preguntaIdx] = opcionIdx;
-    return respuestas;
-  });
-  return result.committed;
+  // 2. Usamos set() en el índice exacto de la pregunta para evitar cualquier problema de permisos con transacciones
+  const respRef = ref(db, `sesiones/${pin}/estudiantes/${studentId}/respuestas_registradas/${preguntaIdx}`);
+  await set(respRef, opcionIdx);
+  return true;
 }
 
 // ---------- LISTENERS ----------
