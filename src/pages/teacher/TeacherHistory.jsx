@@ -61,7 +61,7 @@ export default function TeacherHistory({ onClose }) {
                 </div>
               </div>
               <button
-                onClick={() => navigate(`/docente/${sesion.pin}`)}
+                onClick={() => navigate(`/docente/sesion/${sesion.pin}`)}
                 className="btn-primary w-full bg-kahootBlue opacity-90 group-hover:opacity-100"
               >
                 Abrir Sala

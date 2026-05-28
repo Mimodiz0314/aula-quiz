@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { generarPreguntas } from '../../services/aiService.js';
 import { crearSesion } from '../../services/sessionService.js';
-import TeacherHistory from './TeacherHistory.jsx';
-import { useAuth } from '../../hooks/useAuth.js';
 import { useNavigate } from 'react-router-dom';
 import ReviewQuestions from '../../components/ReviewQuestions.jsx';
 
@@ -16,8 +14,6 @@ export default function Setup({ onCreated }) {
   const [error, setError] = useState(null);
   const [paso, setPaso] = useState('idle');
   const [preguntasGeneradas, setPreguntasGeneradas] = useState([]);
-  const [mostrarHistorial, setMostrarHistorial] = useState(false);
-  const { logout } = useAuth();
   const navigate = useNavigate();
 
   function cambiarModo(nuevoModo) {
@@ -97,12 +93,8 @@ export default function Setup({ onCreated }) {
           <div className="font-black text-xl italic tracking-tighter">Aula<span className="text-kahootBlue">!</span></div>
         </div>
         <div className="flex gap-4 items-center">
-          <button onClick={() => setMostrarHistorial(!mostrarHistorial)} className="font-bold text-sm tracking-widest uppercase text-ink/60 hover:text-ink transition-colors">
-            {mostrarHistorial ? 'Ocultar Historial' : 'Historial'}
-          </button>
-          <span className="text-ink/20">|</span>
-          <button onClick={logout} className="font-bold text-sm tracking-widest uppercase text-deny hover:text-deny/70 transition-colors">
-            Cerrar Sesión
+          <button onClick={() => navigate('/docente')} className="font-bold text-sm tracking-widest uppercase text-ink/60 hover:text-ink transition-colors">
+            Mi Panel
           </button>
         </div>
       </header>
@@ -206,7 +198,6 @@ export default function Setup({ onCreated }) {
         </div>
       </section>
 
-      {mostrarHistorial && <TeacherHistory onClose={() => setMostrarHistorial(false)} />}
     </main>
   );
 }

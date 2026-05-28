@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "usuarios": {
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "sesiones": {
+      "$pin": {
+        ".read": true,
+        ".write": true,
+        ".indexOn": ["creada_en", "docente_uid"]
+      }
+    },
+    "banco_preguntas": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin')",
+        ".write": "auth != null && auth.uid === $uid && root.child('usuarios').child(auth.uid).child('activo').val() === true"
+      }
+    }
+  }
+}
