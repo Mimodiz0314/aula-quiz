@@ -13,6 +13,7 @@ import { fusionarClave, ordenarPorClave, parejasCorrectas, clasificacionCorrecta
 import { TIPOS } from '../../types/activityTypes.js';
 import Leaderboard from '../../components/Leaderboard.jsx';
 import { guardarSala } from '../../utils/savedRooms.js';
+import { hablar, textoLeible } from '../student/Question.jsx';
 
 const Triangle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 20H2L12 2Z" /></svg>;
 const Diamond = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 12L12 22L2 12L12 2Z" /></svg>;
@@ -103,6 +104,13 @@ export default function ControlPanel({ pin, sesion }) {
               {tipoInfo.emoji} {tipoInfo.label}
             </div>
           )}
+          <button
+            onClick={() => hablar(textoLeible(actividad))}
+            className="bg-mist/50 hover:bg-mist text-ink w-8 h-8 rounded-full font-bold text-sm transition-colors flex items-center justify-center"
+            title="Leer en voz alta"
+          >
+            🔊
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <div className="font-bold text-sm tracking-widest uppercase text-ink/50">Tiempo</div>

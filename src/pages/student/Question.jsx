@@ -12,7 +12,7 @@ const OPTION_COLORS = ['option-red', 'option-blue', 'option-yellow', 'option-gre
 
 // Lectura en voz alta (accesibilidad / lectores iniciales). Usa la voz del
 // navegador (gratis). Construye el texto a leer según el tipo de actividad.
-function textoLeible(actividad) {
+export function textoLeible(actividad) {
   if (!actividad) return '';
   const partes = [];
   if (actividad.pasaje) partes.push(actividad.pasaje);
@@ -21,7 +21,7 @@ function textoLeible(actividad) {
   return partes.filter(Boolean).join('. ');
 }
 
-function hablar(texto) {
+export function hablar(texto) {
   try {
     if (typeof window === 'undefined' || !window.speechSynthesis || !texto) return;
     window.speechSynthesis.cancel();

@@ -11,7 +11,7 @@ export default defineConfig({
         id: '/',
         lang: 'es',
         name: 'EduMaster Aula',
-        short_name: 'EduMaster Aula',
+        short_name: 'Aula',
         description: 'EduMaster Aula — evaluación interactiva en tiempo real para el aula de clase.',
         theme_color: '#2A394B',
         background_color: '#2A394B',

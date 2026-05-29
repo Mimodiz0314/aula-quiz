@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ActivityStudentView } from '../pages/student/Question.jsx';
+import { ActivityStudentView, hablar, textoLeible } from '../pages/student/Question.jsx';
 
 export default function StudentPreview({ actividades = [], tema = '', onClose }) {
   const [idx, setIdx] = useState(0);
@@ -21,12 +21,23 @@ export default function StudentPreview({ actividades = [], tema = '', onClose })
           <p className="font-bold text-xs uppercase tracking-widest text-white/60">Vista previa · como la ve el estudiante</p>
           <p className="font-black text-lg truncate max-w-[260px]">{tema || 'Cuestionario'}</p>
         </div>
-        <button
-          onClick={onClose}
-          className="bg-white text-ink px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-white/90 transition-all shadow-md"
-        >
-          ✕ Cerrar
-        </button>
+        <div className="flex gap-2">
+          {actividad && (
+            <button
+              onClick={() => hablar(textoLeible(actividad))}
+              className="bg-white text-ink w-10 h-10 rounded-xl font-black text-lg flex items-center justify-center hover:bg-white/90 transition-all shadow-md"
+              title="Leer en voz alta"
+            >
+              🔊
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="bg-white text-ink px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-white/90 transition-all shadow-md"
+          >
+            ✕ Cerrar
+          </button>
+        </div>
       </div>
 
       {/* "Pantalla" del estudiante */}
