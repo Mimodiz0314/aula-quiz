@@ -4,7 +4,7 @@ import WorksheetPrint from './WorksheetPrint.jsx';
 
 const OPTION_COLORS = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGreen'];
 
-export default function ReviewActivities({ initialActividades, onConfirm, onCancel, tema = '', grado = '', dificultad = '' }) {
+export default function ReviewActivities({ initialActividades, onConfirm, onSave, onCancel, tema = '', grado = '', dificultad = '' }) {
   const [actividades, setActividades] = useState(initialActividades);
   const [modalAgregar, setModalAgregar] = useState(false);
   const [imprimir, setImprimir] = useState(false);
@@ -45,6 +45,15 @@ export default function ReviewActivities({ initialActividades, onConfirm, onCanc
           >
             🖨️ Imprimir / PDF
           </button>
+          {onSave && (
+            <button
+              onClick={() => onSave(actividades)}
+              disabled={actividades.length === 0}
+              className="btn-secondary text-kahootBlue border-kahootBlue/30 hover:bg-kahootBlue/5 disabled:opacity-40"
+            >
+              💾 Guardar
+            </button>
+          )}
           <button
             onClick={() => onConfirm(actividades)}
             disabled={actividades.length === 0}

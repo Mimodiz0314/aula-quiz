@@ -4,6 +4,8 @@ import { crearSesion } from '../../services/sessionService.js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ReviewActivities from '../../components/ReviewActivities.jsx';
 import { TIPOS, TIPOS_LISTA } from '../../types/activityTypes.js';
+import { useAuth } from '../../hooks/useAuth.js';
+import { guardarSala } from '../../utils/savedRooms.js';
 
 const CONTADORES_INICIAL = Object.fromEntries(TIPOS_LISTA.map(t => [t.key, 0]));
 
@@ -21,6 +23,7 @@ const TIPOS_TEXTUALES = ['detective_texto', 'palabras_perdidas'];
 export default function Setup({ onCreated }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [tema, setTema] = useState(location.state?.tema || '');
   const [modoOrigen, setModoOrigen] = useState('tema'); // 'tema' o 'texto' o 'youtube'
@@ -117,6 +120,24 @@ export default function Setup({ onCreated }) {
     }
   }
 
+  // Guardar sin iniciar: crea la sala, la registra en "Salas activas" y va a Mi Panel.
+  async function handleGuardar(actividadesFinales) {
+    setCargando(true);
+    setPaso('creando');
+    try {
+      if (actividadesFinales.length === 0) throw new Error('Debe haber al menos 1 actividad.');
+      const pin = await crearSesion(actividadesFinales, tema.trim(), { grado, dificultad });
+      guardarSala(user?.uid, { pin, tema: tema.trim() });
+      navigate('/docente');
+    } catch (e) {
+      console.error(e);
+      setError(e.message || 'Error al guardar la sala.');
+      setPaso('revisando');
+    } finally {
+      setCargando(false);
+    }
+  }
+
   if (paso === 'revisando' || paso === 'creando') {
     return (
       <main className="min-h-screen px-6 md:px-12 py-12 max-w-4xl mx-auto flex flex-col bg-gameBg animate-fade-in">
@@ -131,6 +152,7 @@ export default function Setup({ onCreated }) {
           grado={grado}
           dificultad={dificultad}
           onConfirm={handleConfirmar}
+          onSave={handleGuardar}
           onCancel={() => { setPaso('idle'); setError(null); }}
         />
       </main>
