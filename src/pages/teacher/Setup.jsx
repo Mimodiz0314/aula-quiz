@@ -12,8 +12,9 @@ export default function Setup({ onCreated }) {
   const navigate = useNavigate();
 
   const [tema, setTema] = useState(location.state?.tema || '');
-  const [modoOrigen, setModoOrigen] = useState('tema'); // 'tema' o 'texto'
+  const [modoOrigen, setModoOrigen] = useState('tema'); // 'tema' o 'texto' o 'youtube'
   const [textoBase, setTextoBase] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [nivel, setNivel] = useState('bachillerato');
   const [contadores, setContadores] = useState(CONTADORES_INICIAL);
   const [cargando, setCargando] = useState(false);
@@ -33,25 +34,28 @@ export default function Setup({ onCreated }) {
   async function handleGenerar() {
     setError(null);
     const isTexto = modoOrigen === 'texto';
-    if (!isTexto && !tema.trim()) return setError('Indica un tema para la evaluación.');
+    const isYoutube = modoOrigen === 'youtube';
+    if (!isTexto && !isYoutube && !tema.trim()) return setError('Indica un tema para la evaluación.');
     if (isTexto && !textoBase.trim()) return setError('Por favor pega el cuestionario o el resumen de texto.');
+    if (isYoutube && !youtubeUrl.trim()) return setError('Por favor introduce un enlace de video de YouTube.');
     if (total < 1) return setError('Añade al menos 1 actividad usando los contadores de abajo.');
 
     const seleccion = Object.entries(contadores).filter(([, v]) => v > 0);
     setCargando(true);
     setPaso('generando');
     
-    const temaFinal = tema.trim() || 'Evaluación de Texto';
+    const temaFinal = tema.trim() || (isYoutube ? 'Evaluación desde YouTube' : 'Evaluación de Texto');
     
     try {
       const resultado = await generarActividades({
         tema: temaFinal,
         nivel,
         seleccion,
-        textoBase: isTexto ? textoBase.trim() : ''
+        textoBase: isTexto ? textoBase.trim() : '',
+        youtubeUrl: isYoutube ? youtubeUrl.trim() : ''
       });
       setActividades(resultado);
-      if (!tema.trim() && isTexto) {
+      if (!tema.trim()) {
         setTema(temaFinal);
       }
       setPaso('revisando');
@@ -128,28 +132,39 @@ export default function Setup({ onCreated }) {
         </p>
 
         {/* Método de creación */}
-        <div className="flex gap-2 p-1.5 bg-ink/5 rounded-2xl mb-8 max-w-md no-print">
+        <div className="flex gap-2 p-1.5 bg-ink/5 rounded-2xl mb-8 max-w-lg no-print">
           <button
             type="button"
             onClick={() => setModoOrigen('tema')}
-            className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${
+            className={`flex-1 py-2.5 rounded-xl font-black text-xs md:text-sm transition-all ${
               modoOrigen === 'tema'
                 ? 'bg-white text-kahootBlue shadow-sm'
                 : 'text-ink/50 hover:text-ink/80'
             }`}
           >
-            🎯 Por Tema / Idea
+            🎯 Tema / Idea
           </button>
           <button
             type="button"
             onClick={() => setModoOrigen('texto')}
-            className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${
+            className={`flex-1 py-2.5 rounded-xl font-black text-xs md:text-sm transition-all ${
               modoOrigen === 'texto'
                 ? 'bg-white text-kahootBlue shadow-sm'
                 : 'text-ink/50 hover:text-ink/80'
             }`}
           >
-            📋 Copiar Lote / Resumen
+            📋 Lote / Resumen
+          </button>
+          <button
+            type="button"
+            onClick={() => setModoOrigen('youtube')}
+            className={`flex-1 py-2.5 rounded-xl font-black text-xs md:text-sm transition-all ${
+              modoOrigen === 'youtube'
+                ? 'bg-white text-kahootBlue shadow-sm'
+                : 'text-ink/50 hover:text-ink/80'
+            }`}
+          >
+            🎥 YouTube
           </button>
         </div>
 
@@ -207,6 +222,40 @@ Ejemplo de Resumen:
 La ley de Ohm establece la relación entre...`}
                 disabled={cargando}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Video de YouTube (Modo: YouTube) */}
+        {modoOrigen === 'youtube' && (
+          <div className="space-y-6 mb-8 animate-fade-in">
+            <div>
+              <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-2 block">
+                Título o Tema de la evaluación (Opcional)
+              </label>
+              <input
+                className="field text-lg"
+                value={tema}
+                onChange={e => setTema(e.target.value)}
+                placeholder="Ej. Magnitudes Eléctricas (Dejar vacío para autodetectar)..."
+                disabled={cargando}
+              />
+            </div>
+            <div>
+              <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-2 block flex items-center justify-between">
+                <span>Enlace del Video de YouTube</span>
+                <span className="text-xs text-ink/40 font-bold tracking-normal normal-case">La IA leerá los subtítulos del video</span>
+              </label>
+              <input
+                className="field text-lg font-mono text-sm"
+                value={youtubeUrl}
+                onChange={e => setYoutubeUrl(e.target.value)}
+                placeholder="Pega aquí el link del video. Ej: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                disabled={cargando}
+              />
+              <p className="text-xs text-ink/40 font-bold mt-1.5 leading-normal">
+                🚨 Nota: El video debe contar con subtítulos disponibles (subidos por el creador o autogenerados en español por YouTube) para que la IA pueda extraer la información.
+              </p>
             </div>
           </div>
         )}

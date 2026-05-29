@@ -13,13 +13,33 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { tema, cantidad, nivel, textoBase, seleccion } = req.body || {};
+  let { tema, cantidad, nivel, textoBase, seleccion, youtubeUrl } = req.body || {};
+
+  // Si se envió un enlace de YouTube, intentamos extraer la transcripción primero
+  if (youtubeUrl && youtubeUrl.trim()) {
+    const videoId = getYouTubeVideoId(youtubeUrl.trim());
+    if (!videoId) {
+      res.status(400).json({ error: 'El enlace de YouTube provisto no es válido o no tiene un ID correcto.' });
+      return;
+    }
+    try {
+      console.log(`🎥 Extrayendo transcripción del video YouTube ID: ${videoId}`);
+      const transcript = await getYouTubeTranscript(videoId);
+      textoBase = transcript;
+    } catch (err) {
+      console.error('Error al obtener la transcripción de YouTube:', err);
+      res.status(422).json({
+        error: `No se pudo obtener la transcripción de YouTube: ${err.message}`
+      });
+      return;
+    }
+  }
 
   // Decide qué modo de generación usar
   const esMultiTipo = Array.isArray(seleccion) && seleccion.length > 0;
 
   if (!tema && !textoBase) {
-    res.status(400).json({ error: 'Parámetros faltantes: debes proveer un tema o un textoBase.' });
+    res.status(400).json({ error: 'Parámetros faltantes: debes proveer un tema, un textoBase o un youtubeUrl.' });
     return;
   }
 
@@ -249,4 +269,113 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
   }
 
   res.status(502).json({ error: `Todos los proveedores de IA fallaron. Errores: ${errorMsg}` });
+}
+
+// ---------------------------------------------------------------------------
+// HELPERS PARA EXTRACCIÓN DE SUBTÍTULOS DE YOUTUBE (SIN LIBRERÍAS EXTERNAS)
+// ---------------------------------------------------------------------------
+
+function getYouTubeVideoId(url) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|\/shorts\/)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+async function getYouTubeTranscript(videoId) {
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`No se pudo acceder a la página de YouTube (HTTP ${response.status})`);
+  }
+  const html = await response.text();
+
+  const index = html.indexOf('"captionTracks":');
+  if (index === -1) {
+    throw new Error('Este video no tiene subtítulos habilitados o disponibles.');
+  }
+
+  // Encontrar el inicio del array de subtítulos
+  const startIndex = html.indexOf('[', index);
+  if (startIndex === -1) {
+    throw new Error('Formato de subtítulos inesperado.');
+  }
+
+  // Escanear para balancear corchetes y extraer el JSON
+  let bracketCount = 1;
+  let endIndex = startIndex + 1;
+  while (bracketCount > 0 && endIndex < html.length) {
+    const char = html[endIndex];
+    if (char === '[') bracketCount++;
+    else if (char === ']') bracketCount--;
+    endIndex++;
+  }
+  const jsonStr = html.substring(startIndex, endIndex);
+
+  let captionTracks;
+  try {
+    captionTracks = JSON.parse(jsonStr);
+  } catch (e) {
+    throw new Error('No se pudo analizar la información de subtítulos del video.');
+  }
+
+  if (!captionTracks || captionTracks.length === 0) {
+    throw new Error('No se encontraron pistas de subtítulos.');
+  }
+
+  // Priorizar pista en español (código 'es' o 'es-ES', etc.), luego inglés, luego primera disponible
+  let track = captionTracks.find(t => t.languageCode === 'es')
+            || captionTracks.find(t => t.languageCode?.startsWith('es'))
+            || captionTracks.find(t => t.languageCode === 'en')
+            || captionTracks[0];
+
+  if (!track || !track.baseUrl) {
+    throw new Error('No se encontró una pista de subtítulos válida en español o inglés.');
+  }
+
+  // Descargar el XML de subtítulos
+  const transcriptResponse = await fetch(track.baseUrl);
+  if (!transcriptResponse.ok) {
+    throw new Error('No se pudo descargar la pista de transcripción.');
+  }
+  const xml = await transcriptResponse.text();
+
+  // Limpiar XML y unir fragmentos de texto
+  const matches = xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g);
+  let textList = [];
+  for (const m of matches) {
+    let fragment = m[1];
+    // Decodificar entidades HTML básicas
+    fragment = fragment
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#x27;/g, "'")
+      .replace(/&ntilde;/g, 'ñ')
+      .replace(/&Ntilde;/g, 'Ñ')
+      .replace(/&aacute;/g, 'á')
+      .replace(/&eacute;/g, 'é')
+      .replace(/&iacute;/g, 'í')
+      .replace(/&oacute;/g, 'ó')
+      .replace(/&uacute;/g, 'ú');
+    textList.push(fragment);
+  }
+
+  if (textList.length === 0) {
+    throw new Error('Los subtítulos no contienen texto decodificable.');
+  }
+
+  // Limitar palabras para evitar sobrecargar la ventana de contexto de la IA
+  const fullText = textList.join(' ');
+  const words = fullText.split(/\s+/);
+  if (words.length > 5000) {
+    return words.slice(0, 5000).join(' ') + '... [Transcripción truncada por longitud]';
+  }
+  return fullText;
 }
