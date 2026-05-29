@@ -24,8 +24,8 @@ export default function Setup({ onCreated }) {
   const [textoBase, setTextoBase] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [nivel, setNivel] = useState('bachillerato');
-  const [grado, setGrado] = useState('');         // opcional
-  const [dificultad, setDificultad] = useState(''); // opcional
+  const [grado, setGrado] = useState(location.state?.grado || '');         // opcional
+  const [dificultad, setDificultad] = useState(location.state?.dificultad || ''); // opcional
   const [encabezado, setEncabezado] = useState(() => {
     try { return JSON.parse(localStorage.getItem('aula_encabezado')) || {}; }
     catch { return {}; }
@@ -102,7 +102,7 @@ export default function Setup({ onCreated }) {
     setPaso('creando');
     try {
       if (actividadesFinales.length === 0) throw new Error('Debe haber al menos 1 actividad.');
-      const pin = await crearSesion(actividadesFinales, tema.trim());
+      const pin = await crearSesion(actividadesFinales, tema.trim(), { grado, dificultad });
       onCreated(pin);
     } catch (e) {
       console.error(e);
@@ -124,6 +124,8 @@ export default function Setup({ onCreated }) {
         <ReviewActivities
           initialActividades={actividades}
           tema={tema}
+          grado={grado}
+          dificultad={dificultad}
           onConfirm={handleConfirmar}
           onCancel={() => { setPaso('idle'); setError(null); }}
         />

@@ -90,6 +90,8 @@ export default function Lobby({ pin, sesion }) {
       <WorksheetPrint
         actividades={fusionarLista(sesion.preguntas || [], claves)}
         tema={sesion.tema || ''}
+        grado={sesion.grado || ''}
+        dificultad={sesion.dificultad || ''}
         onClose={() => setImprimir(false)}
       />
     );

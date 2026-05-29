@@ -38,7 +38,7 @@ export default function TeacherDashboard() {
       for (const sala of guardadas) {
         try {
           const s = await obtenerSesion(sala.pin);
-          if (s) verificadas.push({ pin: sala.pin, tema: s.tema || sala.tema || '', estado: s.estado_actual });
+          if (s) verificadas.push({ pin: sala.pin, tema: s.tema || sala.tema || '', estado: s.estado_actual, grado: s.grado || '', dificultad: s.dificultad || '' });
         } catch { /* ignore */ }
       }
       if (!activo) return;
@@ -77,7 +77,9 @@ export default function TeacherDashboard() {
     navigate('/docente/nueva', {
       state: {
         actividades: sesion.preguntas || [],
-        tema: sesion.tema || ''
+        tema: sesion.tema || '',
+        grado: sesion.grado || '',
+        dificultad: sesion.dificultad || ''
       }
     });
   }
@@ -85,7 +87,10 @@ export default function TeacherDashboard() {
   async function handleReuse(sesion) {
     setReutilizando(true);
     try {
-      const newPin = await crearSesion(sesion.preguntas || [], sesion.tema || '');
+      const newPin = await crearSesion(sesion.preguntas || [], sesion.tema || '', {
+        grado: sesion.grado || '',
+        dificultad: sesion.dificultad || ''
+      });
       navigate(`/docente/sesion/${newPin}`);
     } catch (e) {
       console.error(e);
@@ -175,9 +180,10 @@ export default function TeacherDashboard() {
                     <span className="font-black text-2xl text-kahootBlue tracking-wider shrink-0">{s.pin}</span>
                     <div className="min-w-0">
                       {s.tema && <div className="font-black text-base text-ink truncate">{s.tema}</div>}
-                      <div className="font-bold text-xs text-ink/40 capitalize">
+                      <div className="font-bold text-xs text-ink/40 capitalize mb-1">
                         {(s.estado || '').replace(/_/g, ' ') || 'Guardada'}
                       </div>
+                      <MetaBadges grado={s.grado} dificultad={s.dificultad} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -261,6 +267,8 @@ export default function TeacherDashboard() {
         <WorksheetPrint
           actividades={imprimir.preguntas || []}
           tema={imprimir.tema || ''}
+          grado={imprimir.grado || ''}
+          dificultad={imprimir.dificultad || ''}
           onClose={() => setImprimir(null)}
         />
       )}
@@ -345,7 +353,8 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onP
           <div className="font-bold text-sm text-ink/70 truncate">
             {sesion.total_preguntas ?? 0} preguntas · {nEstudiantes} estudiante{nEstudiantes !== 1 ? 's' : ''}
           </div>
-          <div className="font-bold text-xs text-ink/40">{fecha}</div>
+          <div className="font-bold text-xs text-ink/40 mb-1">{fecha}</div>
+          <MetaBadges grado={sesion.grado} dificultad={sesion.dificultad} />
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
@@ -429,7 +438,9 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
     navigate('/docente/nueva', {
       state: {
         actividades: sesion.preguntas || [],
-        tema: sesion.tema || ''
+        tema: sesion.tema || '',
+        grado: sesion.grado || '',
+        dificultad: sesion.dificultad || ''
       }
     });
   }
@@ -437,7 +448,10 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
   async function publicarDeNuevo() {
     setLanzando(true);
     try {
-      const newPin = await crearSesion(sesion.preguntas || [], sesion.tema || '');
+      const newPin = await crearSesion(sesion.preguntas || [], sesion.tema || '', {
+        grado: sesion.grado || '',
+        dificultad: sesion.dificultad || ''
+      });
       onClose();
       navigate(`/docente/sesion/${newPin}`);
     } catch (e) {
@@ -481,6 +495,7 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
                 Tema: {sesion.tema}
               </div>
             )}
+            <div className="mt-1.5"><MetaBadges grado={sesion.grado} dificultad={sesion.dificultad} /></div>
             <div className="font-bold text-sm text-ink/50 mt-1">
               {sesion.total_preguntas ?? 0} preguntas · {resultados.length} estudiantes ·
               Prom. <span className={sesion.promedio_grupo >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'}>
@@ -670,6 +685,25 @@ function ModalMiPassword({ onClose, cambiarMiPassword }) {
         </form>
       </div>
     </div>
+  );
+}
+
+// Insignias de grado y nivel de dificultad (para reconocer y, a futuro, medir progreso).
+function MetaBadges({ grado, dificultad }) {
+  if (!grado && !dificultad) return null;
+  return (
+    <span className="inline-flex gap-1.5 flex-wrap align-middle">
+      {grado && (
+        <span className="px-2 py-0.5 rounded-full bg-kahootBlue/10 text-kahootBlue text-[11px] font-black">
+          {grado}
+        </span>
+      )}
+      {dificultad && (
+        <span className="px-2 py-0.5 rounded-full bg-kahootGreen/10 text-kahootGreen text-[11px] font-black">
+          {dificultad}
+        </span>
+      )}
+    </span>
   );
 }
 

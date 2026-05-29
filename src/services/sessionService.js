@@ -70,7 +70,7 @@ export { ESTADOS };
  * Crea una sesión nueva con un PIN único. Reintenta hasta 5 veces
  * si por colisión astronómica el PIN ya existe.
  */
-export async function crearSesion(preguntas, tema = '') {
+export async function crearSesion(preguntas, tema = '', meta = {}) {
   const docenteUid = getEffectiveUid();
   if (!docenteUid) throw new Error('Debes estar autenticado para crear una sesión.');
 
@@ -106,6 +106,8 @@ export async function crearSesion(preguntas, tema = '') {
       // Con claves guardadas → públicas (sin respuestas). Sin claves → completas.
       preguntas: clavesOk ? publicas : preguntas,
       tema,
+      grado: meta.grado || '',
+      dificultad: meta.dificultad || '',
       estudiantes: {},
     });
     return pin;
@@ -269,6 +271,8 @@ export async function cerrarSesion(pin) {
     await set(historialRef, {
       pin,
       tema: sesion.tema || '',
+      grado: sesion.grado || '',
+      dificultad: sesion.dificultad || '',
       creada_en: sesion.creada_en || Date.now(),
       cerrada_en: Date.now(),
       total_preguntas: preguntas.length,

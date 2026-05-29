@@ -19,7 +19,7 @@ function leerEncabezado() {
   catch { return {}; }
 }
 
-export default function WorksheetPrint({ actividades = [], tema = '', onClose }) {
+export default function WorksheetPrint({ actividades = [], tema = '', grado = '', dificultad = '', onClose }) {
   const [modo, setModo] = useState('estudiante'); // 'estudiante' | 'clave'
 
   // Encabezado editable (se recuerda institución y docente entre sesiones).
@@ -97,6 +97,8 @@ export default function WorksheetPrint({ actividades = [], tema = '', onClose })
           <Encabezado
             esClave={esClave}
             total={actividades.length}
+            grado={grado}
+            dificultad={dificultad}
             institucion={encabezado.institucion || ''}
             docente={encabezado.docente || ''}
             titulo={titulo}
@@ -132,7 +134,8 @@ export default function WorksheetPrint({ actividades = [], tema = '', onClose })
 // En pantalla los campos editables se ven con borde; al imprimir, el borde
 // desaparece y queda como texto natural del documento.
 // ---------------------------------------------------------------------------
-function Encabezado({ esClave, total, institucion, docente, titulo, notas, onInstitucion, onDocente, onTitulo, onNotas }) {
+function Encabezado({ esClave, total, grado, dificultad, institucion, docente, titulo, notas, onInstitucion, onDocente, onTitulo, onNotas }) {
+  const metaTexto = [grado, dificultad].filter(Boolean).join(' · ');
   return (
     <header className="border-b-2 border-gray-800 pb-4">
       <div className="flex items-start justify-between gap-4">
@@ -153,6 +156,7 @@ function Encabezado({ esClave, total, institucion, docente, titulo, notas, onIns
           placeholder="Título de la guía"
           className="ws-title text-2xl md:text-3xl font-black text-center leading-tight w-full bg-transparent"
         />
+        {metaTexto && <span className="block text-sm font-bold text-gray-500 mt-1">{metaTexto}</span>}
         {esClave && <span className="block text-base font-bold text-gray-500 mt-1">— CLAVE DE RESPUESTAS —</span>}
       </div>
 
