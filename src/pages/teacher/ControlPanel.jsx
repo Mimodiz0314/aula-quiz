@@ -12,6 +12,7 @@ import { esAcierto } from '../../utils/grading.js';
 import { fusionarClave, ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../../utils/clave.js';
 import { TIPOS } from '../../types/activityTypes.js';
 import Leaderboard from '../../components/Leaderboard.jsx';
+import { guardarSala } from '../../utils/savedRooms.js';
 
 const Triangle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 20H2L12 2Z" /></svg>;
 const Diamond = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 12L12 22L2 12L12 2Z" /></svg>;
@@ -23,6 +24,13 @@ const COLORS = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGr
 export default function ControlPanel({ pin, sesion }) {
   const navigate = useNavigate();
   const [mostrarTabla, setMostrarTabla] = useState(false);
+
+  // Ir a Mi Panel sin perder la sesión: guarda la sala (queda en "Salas activas")
+  // y navega al panel. La sesión sigue viva; se vuelve con "Abrir sala".
+  function irAMiPanel() {
+    try { guardarSala(sesion.docente_uid, { pin, tema: sesion.tema }); } catch { /* ignore */ }
+    navigate('/docente');
+  }
   // Las respuestas correctas viven en /claves (no en /sesiones). El docente las
   // lee una vez y las fusiona en memoria para mostrar/calcular stats de aciertos.
   const [claves, setClaves] = useState(null);
@@ -83,7 +91,7 @@ export default function ControlPanel({ pin, sesion }) {
       {/* Encabezado */}
       <header className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm mb-6">
         <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={() => navigate('/')} className="btn-ghost">⌂ Inicio</button>
+          <button onClick={irAMiPanel} className="btn-ghost">🏠 Mi Panel</button>
           <div className="font-bold text-sm tracking-widest uppercase text-ink/50 bg-mist/50 px-3 py-1 rounded-full">
             PIN {pin}
           </div>
