@@ -1,27 +1,86 @@
 // ---------------------------------------------------------------------------
 // CÁLCULO DE CALIFICACIÓN — escala lineal 0.0 a 5.0
-// Función pura: misma entrada => misma salida. Fácil de probar.
-// Fórmula: nota = (aciertos / totalPreguntas) * 5.0
+// Soporta los 10 tipos de actividades interactivas.
 // ---------------------------------------------------------------------------
 
-/**
- * Determina si una respuesta es correcta comparando el índice
- * elegido con el índice marcado como correcto en la pregunta.
- * @param {object} pregunta  { correcta: number, ... }
- * @param {number} respuesta índice 0-3 escogido por el estudiante
- * @returns {boolean}
- */
-export function esAcierto(pregunta, respuesta) {
-  if (!pregunta || respuesta === undefined || respuesta === null) return false;
-  return Number(pregunta.correcta) === Number(respuesta);
+function parseJSON(val) {
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return null; }
+  }
+  return val;
 }
 
 /**
- * Cuenta aciertos de un estudiante sobre un banco de preguntas.
- * @param {Array} preguntas       banco completo
- * @param {Object} respuestas     { [indicePregunta]: indiceOpcion }
- * @returns {number}              número de aciertos
+ * Determina si una respuesta es correcta según el tipo de actividad.
+ * Backward-compatible: actividades sin campo "tipo" se tratan como seleccion_clasica.
  */
+export function esAcierto(actividad, respuesta) {
+  if (!actividad || respuesta === undefined || respuesta === null) return false;
+
+  const tipo = actividad.tipo || 'seleccion_clasica';
+
+  switch (tipo) {
+    case 'seleccion_clasica':
+    case 'detective_texto':
+      return Number(actividad.correcta) === Number(respuesta);
+
+    case 'verdad_mito':
+      return actividad.correcto === respuesta;
+
+    case 'real_inventado':
+      return actividad.correcto === respuesta;
+
+    case 'caza_intruso':
+      return Number(actividad.intruso_idx) === Number(respuesta);
+
+    case 'rompecabezas_ideas': {
+      const elegido = parseJSON(respuesta);
+      if (!Array.isArray(elegido)) return false;
+      const n = actividad.fragmentos?.length ?? 0;
+      return elegido.length === n && elegido.every((v, i) => Number(v) === i);
+    }
+
+    case 'paso_a_paso': {
+      const elegido = parseJSON(respuesta);
+      if (!Array.isArray(elegido)) return false;
+      const n = actividad.pasos?.length ?? 0;
+      return elegido.length === n && elegido.every((v, i) => Number(v) === i);
+    }
+
+    case 'parejas_logicas': {
+      // respuesta: JSON array donde elegido[i] = origIdx del elemento derecha
+      // emparejado al elemento izquierda[i]. Correcto cuando elegido[i] === i.
+      const elegido = parseJSON(respuesta);
+      if (!Array.isArray(elegido)) return false;
+      return elegido.every((v, i) => Number(v) === i);
+    }
+
+    case 'clasificador': {
+      // respuesta: JSON array donde asignado[i] = índice de categoría (0 o 1)
+      // para el ítem i en la lista aplanada [...cat0.items, ...cat1.items].
+      const asignado = parseJSON(respuesta);
+      if (!Array.isArray(asignado)) return false;
+      const n0 = actividad.categorias?.[0]?.items?.length ?? 0;
+      const n1 = actividad.categorias?.[1]?.items?.length ?? 0;
+      if (asignado.length !== n0 + n1) return false;
+      return asignado.every((v, i) => Number(v) === (i < n0 ? 0 : 1));
+    }
+
+    case 'palabras_perdidas': {
+      const elegidas = parseJSON(respuesta);
+      const correctas = actividad.respuestas ?? [];
+      if (!Array.isArray(elegidas) || elegidas.length !== correctas.length) return false;
+      return elegidas.every((w, i) =>
+        String(w).trim().toLowerCase() === String(correctas[i]).trim().toLowerCase()
+      );
+    }
+
+    default:
+      if ('correcta' in actividad) return Number(actividad.correcta) === Number(respuesta);
+      return false;
+  }
+}
+
 export function contarAciertos(preguntas = [], respuestas = {}) {
   return preguntas.reduce((acc, pregunta, idx) => {
     const r = respuestas[idx];
@@ -29,24 +88,12 @@ export function contarAciertos(preguntas = [], respuestas = {}) {
   }, 0);
 }
 
-/**
- * Calcula la nota final en escala 0.0 - 5.0, redondeada a 1 decimal.
- * @param {number} aciertos
- * @param {number} total
- * @returns {number}              p.ej. 4.2
- */
 export function calcularNota(aciertos, total) {
   if (!total || total <= 0) return 1.0;
   const bruto = (aciertos / total) * 5.0;
-  // Redondeo a un decimal — evita 4.199999...
-  const nota = Math.round(bruto * 10) / 10;
-  return Math.max(1.0, nota);
+  return Math.max(1.0, Math.round(bruto * 10) / 10);
 }
 
-/**
- * Atajo de orden superior: dado el estado de un estudiante + banco,
- * devuelve {aciertos, total, nota}.
- */
 export function evaluarEstudiante(estudiante, preguntas = []) {
   const respuestas = estudiante?.respuestas_registradas || {};
   const aciertos = contarAciertos(preguntas, respuestas);

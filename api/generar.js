@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Configurar cabeceras de CORS para permitir peticiones desde cualquier origen (incluyendo Firebase Hosting y Localhost)
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -8,19 +7,18 @@ export default async function handler(req, res) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  // Manejar la petición OPTIONS de preflight de CORS
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Método no permitido. Solo se acepta POST.' });
     return;
   }
 
-  const { tema, cantidad, nivel, textoBase } = req.body || {};
-  if ((!tema && !textoBase)) {
+  const { tema, cantidad, nivel, textoBase, seleccion } = req.body || {};
+
+  // Decide qué modo de generación usar
+  const esMultiTipo = Array.isArray(seleccion) && seleccion.length > 0;
+
+  if (!tema && !textoBase) {
     res.status(400).json({ error: 'Parámetros faltantes: debes proveer un tema o un textoBase.' });
     return;
   }
@@ -28,50 +26,109 @@ export default async function handler(req, res) {
   let systemPrompt = '';
   let userPrompt = '';
 
-  if (textoBase) {
-    systemPrompt = `Eres un asistente experto en extracción de datos educativos.
-Tu tarea es leer el texto crudo proporcionado por el usuario (que contiene un cuestionario) y extraer todas las preguntas, opciones de respuesta y la respuesta correcta.
-Debes formatear el resultado EXACTAMENTE como un array JSON.
+  // -------------------------------------------------------------------------
+  // MODO MULTI-TIPO — 10 tipos de actividades educativas
+  // -------------------------------------------------------------------------
+  if (esMultiTipo) {
+    const total = seleccion.reduce((s, [, n]) => s + Number(n), 0);
 
-Criterios INNEGOCIABLES:
-1. Extrae cada pregunta encontrada en el texto.
-2. Extrae las opciones para cada pregunta (usualmente 4).
-3. Determina el índice de la respuesta correcta (0 para A/primera, 1 para B/segunda, 2 para C/tercera, 3 para D/cuarta) según lo indique el texto.
+    systemPrompt = `Eres un diseñador senior de actividades educativas para colegios colombianos.
+Tu tarea es generar un array JSON mixto de actividades interactivas para la clase, siguiendo los esquemas exactos descritos abajo.
+
+REGLAS INNEGOCIABLES:
+1. Devuelve EXCLUSIVAMENTE un array JSON válido. Sin markdown, sin texto extra, sin explicaciones.
+2. 🚨 CRÍTICO: Cada objeto del array DEBE contener el campo "tipo" con EXACTAMENTE el valor indicado en la lista. SIN "tipo" el sistema explota.
+3. Genera exactamente la cantidad de cada tipo que el usuario solicite, EN EL ORDEN indicado.
+4. Idioma: español neutro, registro académico, ortografía perfecta.
+5. Contenido adaptado al nivel académico indicado.
+6. El array de respuesta debe tener EXACTAMENTE tantos objetos como el total solicitado.
+
+ESQUEMAS POR TIPO:
+
+tipo "seleccion_clasica" — opción múltiple con 4 respuestas:
+{"tipo":"seleccion_clasica","pregunta":"enunciado claro","opciones":["A...","B...","C...","D..."],"correcta":0}
+Reglas: correcta = índice 0-3 de la única opción correcta; opciones deben ser plausibles y de longitud similar.
+
+tipo "verdad_mito" — enunciado verdadero o falso:
+{"tipo":"verdad_mito","enunciado":"afirmación sobre el tema","correcto":"verdad","explicacion":"por qué es verdad o mito"}
+Reglas: correcto debe ser exactamente "verdad" o "mito"; explicacion es breve (1-2 oraciones).
+
+tipo "rompecabezas_ideas" — ordenar fragmentos en secuencia correcta:
+{"tipo":"rompecabezas_ideas","instruccion":"Ordena estos fragmentos en el orden correcto:","fragmentos":["frag1","frag2","frag3","frag4"]}
+Reglas: escribe los fragmentos YA EN EL ORDEN CORRECTO (el sistema los desordenará para el estudiante); mínimo 3 fragmentos.
+
+tipo "parejas_logicas" — emparejar conceptos con definiciones:
+{"tipo":"parejas_logicas","instruccion":"Empareja cada concepto con su definición:","pares":[{"izquierda":"término","derecha":"definición"},{"izquierda":"término","derecha":"definición"},{"izquierda":"término","derecha":"definición"},{"izquierda":"término","derecha":"definición"}]}
+Reglas: exactamente 4 pares; izquierda = concepto, derecha = su definición o par correcto.
+
+tipo "caza_intruso" — encontrar el elemento que no pertenece:
+{"tipo":"caza_intruso","instruccion":"¿Cuál de estos elementos no pertenece al grupo?","elementos":["elem1","elem2","elem3","elem4","elem5"],"intruso_idx":2}
+Reglas: exactamente 5 elementos; intruso_idx = índice 0-4 del elemento que no pertenece; los demás deben pertenecer claramente a la misma categoría.
+
+tipo "clasificador" — clasificar elementos en dos categorías:
+{"tipo":"clasificador","instruccion":"Clasifica cada elemento en su categoría correcta:","categorias":[{"nombre":"Categoría A","items":["item1","item2","item3"]},{"nombre":"Categoría B","items":["item4","item5","item6"]}]}
+Reglas: exactamente 2 categorías con exactamente 3 items cada una; los items de cada categoría deben pertenecer claramente a ella.
+
+tipo "palabras_perdidas" — completar texto con banco de palabras:
+{"tipo":"palabras_perdidas","oracion":"La [___] ocurre en los [___] de las plantas.","banco":["fotosíntesis","cloroplastos","mitocondrias","respiración"],"respuestas":["fotosíntesis","cloroplastos"]}
+Reglas: usa [___] para cada espacio en blanco en oracion; respuestas lista la palabra correcta para cada [___] en orden; banco incluye las respuestas correctas más 2-3 distractores plausibles.
+
+tipo "paso_a_paso" — ordenar pasos de un proceso:
+{"tipo":"paso_a_paso","instruccion":"Ordena los pasos del proceso:","pasos":["paso1","paso2","paso3","paso4"]}
+Reglas: escribe los pasos YA EN EL ORDEN CORRECTO (el sistema los desordenará); mínimo 3 pasos; cada paso debe ser una acción concreta.
+
+tipo "real_inventado" — determinar si un hecho es real o ficticio:
+{"tipo":"real_inventado","enunciado":"afirmación sobre el tema","correcto":"real","explicacion":"por qué es real o inventado"}
+Reglas: correcto debe ser exactamente "real" o "inventado"; el enunciado inventado debe ser plausible pero verificablemente falso; explicacion es breve (1-2 oraciones).
+
+tipo "detective_texto" — leer un pasaje y responder:
+{"tipo":"detective_texto","pasaje":"fragmento de lectura de 2-4 oraciones relacionado con el tema","pregunta":"pregunta de comprensión sobre el pasaje","opciones":["A...","B...","C...","D..."],"correcta":1}
+Reglas: pasaje de 2-4 oraciones; la respuesta correcta debe estar respaldada por el pasaje; correcta = índice 0-3.`;
+
+    // Construir la lista expandida: Actividad 1: tipo=X, Actividad 2: tipo=Y, ...
+    let idx = 0;
+    const listaExpandida = seleccion
+      .flatMap(([tipo, n]) =>
+        Array.from({ length: Number(n) }, () => `  Actividad ${++idx}: tipo="${tipo}"`)
+      )
+      .join('\n');
+
+    userPrompt = `Tema: ${tema}
+Nivel académico: ${nivel || 'bachillerato'}
+Total de actividades: ${total}
+
+Genera EXACTAMENTE estas ${total} actividades en este orden. El campo "tipo" de cada objeto DEBE ser EXACTAMENTE el indicado:
+${listaExpandida}
+
+Devuelve EXCLUSIVAMENTE el array JSON con los ${total} objetos. El primer objeto tendrá el tipo de Actividad 1, el segundo de Actividad 2, etc. Nada antes, nada después del array.`;
+
+  // -------------------------------------------------------------------------
+  // MODO CLÁSICO — solo seleccion_clasica (compatibilidad con flujo antiguo)
+  // -------------------------------------------------------------------------
+  } else if (textoBase) {
+    systemPrompt = `Eres un asistente experto en extracción de datos educativos.
+Lee el texto crudo y extrae todas las preguntas, opciones y la respuesta correcta.
+Formatea el resultado EXACTAMENTE como un array JSON.
 
 FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdown:
-[
-  {
-    "pregunta": "string con el enunciado",
-    "opciones": ["Opción 1", "Opción 2", "Opción 3", "Opción 4"],
-    "correcta": 0
-  }
-]
+[{"tipo":"seleccion_clasica","pregunta":"string","opciones":["Op1","Op2","Op3","Op4"],"correcta":0}]
 El campo "correcta" es el índice 0-3 de la opción correcta.
 Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
+    userPrompt = `Extrae el cuestionario del siguiente texto:\n\n${textoBase}`;
 
-    userPrompt = `Extrae el cuestionario del siguiente texto y devuélvelo en el formato JSON indicado:\n\n${textoBase}`;
   } else {
     systemPrompt = `Eres un evaluador senior con experiencia en pruebas estandarizadas ICFES Saber (Colombia).
-Tu tarea es generar EXACTAMENTE ${cantidad || 10} preguntas de selección múltiple, cumpliendo estos criterios INNEGOCIABLES:
+Genera EXACTAMENTE ${cantidad || 10} preguntas de selección múltiple cumpliendo estos criterios:
 
 1. ENUNCIADO: claro, autocontenido, con contexto + tarea. Sin ambigüedad.
-2. OPCIONES: 4 alternativas (A, B, C, D), de longitud y complejidad similares, todas plausibles, redactadas en paralelo gramatical.
+2. OPCIONES: 4 alternativas plausibles de longitud similar, redactadas en paralelo gramatical.
 3. CORRECTA: una y solo una opción inobjetablemente correcta.
-4. DIFICULTAD: progresiva, pero alcanzable para el nivel solicitado.
-5. SIN PISTAS: no incluyas palabras como "todas las anteriores", "ninguna", ni longitudes desiguales que delaten la respuesta.
-6. IDIOMA: español neutro, registro académico, ortografía perfecta.
+4. DIFICULTAD: progresiva pero alcanzable para el nivel solicitado.
+5. IDIOMA: español neutro, registro académico, ortografía perfecta.
 
 FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdown:
-[
-  {
-    "pregunta": "string con el enunciado",
-    "opciones": ["A...", "B...", "C...", "D..."],
-    "correcta": 0
-  }
-]
-El campo "correcta" es el índice 0-3 de la opción correcta.
+[{"tipo":"seleccion_clasica","pregunta":"string","opciones":["A...","B...","C...","D..."],"correcta":0}]
 Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
-
     userPrompt = `Tema: ${tema}\nNivel del estudiante: ${nivel || 'bachillerato'}\nGenera ${cantidad || 10} preguntas siguiendo estrictamente el formato JSON especificado.`;
   }
 
@@ -80,34 +137,43 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
       name: 'Groq',
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       apiKey: process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
-    }
+      model: 'llama-3.3-70b-versatile',
+    },
   ];
+
+  // Si es multi-tipo, precalculamos la lista expandida de tipos
+  // para poder rescatar el campo "tipo" si la IA lo omite.
+  // tiposEsperados[i] = tipo que debería tener la actividad i
+  let tiposEsperados = [];
+  if (esMultiTipo) {
+    for (const [tipo, n] of seleccion) {
+      for (let k = 0; k < Number(n); k++) tiposEsperados.push(tipo);
+    }
+  }
 
   let errorMsg = '';
 
   for (const provider of providers) {
     if (!provider.apiKey) {
-      console.warn(`Saltando proveedor ${provider.name} porque no tiene API Key configurada en variables de entorno.`);
+      console.warn(`Saltando ${provider.name}: sin API Key configurada.`);
       continue;
     }
-
     try {
-      console.log(`Intentando generar con ${provider.name} en el servidor...`);
+      console.log(`Intentando con ${provider.name}…`);
       const response = await fetch(provider.endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.apiKey}`
+          'Authorization': `Bearer ${provider.apiKey}`,
         },
         body: JSON.stringify({
           model: provider.model,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
+            { role: 'user', content: userPrompt },
           ],
-          temperature: 0.7
-        })
+          temperature: 0.4,  // más baja = más fiel al esquema
+        }),
       });
 
       if (!response.ok) {
@@ -117,22 +183,48 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
 
       const result = await response.json();
       const raw = result.choices?.[0]?.message?.content || '';
-      
-      // Intentar parsear localmente para asegurar formato válido antes de responder
-      const limpio = raw
-        .trim()
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/```$/i, '')
+
+      // --- Limpieza robusta del texto ---
+      const limpio = raw.trim()
+        .replace(/^```(?:json)?[\s\r\n]*/i, '')
+        .replace(/[\s\r\n]*```$/i, '')
         .trim();
 
-      const parsed = JSON.parse(limpio);
-      const arr = Array.isArray(parsed) ? parsed : parsed.preguntas;
-
-      if (!Array.isArray(arr)) {
-        throw new Error('El resultado de la IA no es un array.');
+      let parsed;
+      try {
+        parsed = JSON.parse(limpio);
+      } catch (parseErr) {
+        // Intentar extraer el primer array/objeto JSON del texto
+        const match = limpio.match(/(\[\s*\{[\s\S]*\}\s*\]|\{[\s\S]*\})/);
+        if (!match) throw new Error('No se encontró JSON válido en la respuesta de la IA.');
+        parsed = JSON.parse(match[1]);
       }
 
-      // Devolver directamente el array limpio
+      // --- Extracción robusta del array ---
+      // Busca el array en cualquier clave del objeto si no viene directo
+      let arr;
+      if (Array.isArray(parsed)) {
+        arr = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        // Buscar la primera clave cuyo valor sea un array
+        const claveArray = Object.keys(parsed).find(k => Array.isArray(parsed[k]));
+        arr = claveArray ? parsed[claveArray] : null;
+      }
+
+      if (!Array.isArray(arr)) throw new Error('El resultado de la IA no es un array.');
+
+      // --- Rescate del campo "tipo" si la IA lo omitió ---
+      // Solo aplica en modo multi-tipo y si tiposEsperados está disponible
+      if (esMultiTipo && tiposEsperados.length === arr.length) {
+        arr = arr.map((item, i) => {
+          if (!item.tipo && tiposEsperados[i]) {
+            console.warn(`⚠️ Actividad ${i + 1} sin campo "tipo" — asignando "${tiposEsperados[i]}" automáticamente.`);
+            return { ...item, tipo: tiposEsperados[i] };
+          }
+          return item;
+        });
+      }
+
       res.status(200).json(arr);
       return;
 

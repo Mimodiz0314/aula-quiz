@@ -1,32 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ref, get, query, orderByChild, equalTo } from 'firebase/database';
-import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '../../firebase/config.js';
+import { ref, get, set, update, remove } from 'firebase/database';
+import { getAuth, createUserWithEmailAndPassword, signOut as authSignOut, sendPasswordResetEmail } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { db, app } from '../../firebase/config.js';
 import { useAuth } from '../../hooks/useAuth.js';
 
 export default function AdminPanel() {
-  const { userData, logout } = useAuth();
+  const { userData, logout, user } = useAuth();
   const [docentes, setDocentes] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState('');
   const [modalCrear, setModalCrear] = useState(false);
-  const [modalPassword, setModalPassword] = useState(null); // uid del docente
-  const [confirmarEliminar, setConfirmarEliminar] = useState(null); // uid
+  const [modalPassword, setModalPassword] = useState(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [accion, setAccion] = useState({ tipo: null, uid: null });
+  const [mensaje, setMensaje] = useState('');
 
   const cargarDocentes = useCallback(async () => {
     setCargando(true);
+    setErrorCarga('');
     try {
-      const q = query(ref(db, 'usuarios'), orderByChild('rol'), equalTo('docente'));
-      const snap = await get(q);
+      const snap = await get(ref(db, 'usuarios'));
       if (!snap.exists()) {
         setDocentes([]);
         return;
       }
-      const lista = Object.entries(snap.val()).map(([uid, data]) => ({ uid, ...data }));
-      lista.sort((a, b) => b.creado_en - a.creado_en);
+      const lista = Object.entries(snap.val())
+        .map(([uid, data]) => ({ uid, ...data }))
+        .filter(u => u.rol === 'docente' || u.rol === 'admin');
+      lista.sort((a, b) => {
+        if (a.rol === 'admin' && b.rol !== 'admin') return -1;
+        if (b.rol === 'admin' && a.rol !== 'admin') return 1;
+        return (b.creado_en || 0) - (a.creado_en || 0);
+      });
       setDocentes(lista);
     } catch (e) {
       console.error('Error cargando docentes:', e);
+      setErrorCarga(`Error al cargar: ${e.message}`);
     } finally {
       setCargando(false);
     }
@@ -35,10 +45,9 @@ export default function AdminPanel() {
   useEffect(() => { cargarDocentes(); }, [cargarDocentes]);
 
   async function toggleActivo(docente) {
-    const fn = docente.activo ? 'desactivarDocente' : 'reactivarDocente';
-    setAccion({ tipo: fn, uid: docente.uid });
+    setAccion({ tipo: 'toggle', uid: docente.uid });
     try {
-      await httpsCallable(functions, fn)({ uid: docente.uid });
+      await update(ref(db, `usuarios/${docente.uid}`), { activo: !docente.activo });
       await cargarDocentes();
     } catch (e) {
       alert(`Error: ${e.message}`);
@@ -47,10 +56,10 @@ export default function AdminPanel() {
     }
   }
 
-  async function handleEliminar(uid) {
-    setAccion({ tipo: 'eliminar', uid });
+  async function handleEliminar(docente) {
+    setAccion({ tipo: 'eliminar', uid: docente.uid });
     try {
-      await httpsCallable(functions, 'eliminarDocente')({ uid });
+      await remove(ref(db, `usuarios/${docente.uid}`));
       setConfirmarEliminar(null);
       await cargarDocentes();
     } catch (e) {
@@ -60,7 +69,8 @@ export default function AdminPanel() {
     }
   }
 
-  const activos = docentes.filter(d => d.activo).length;
+  const soloDocentes = docentes.filter(d => d.rol === 'docente');
+  const activos = soloDocentes.filter(d => d.activo).length;
 
   return (
     <main className="min-h-screen bg-gameBg">
@@ -85,32 +95,54 @@ export default function AdminPanel() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 md:px-12 py-10">
+        {mensaje && (
+          <div className="mb-6 bg-kahootGreen/10 border-l-4 border-kahootGreen p-4 rounded-r-xl font-bold text-sm text-kahootGreen">
+            {mensaje}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-          <StatCard label="Total Docentes" value={docentes.length} />
+          <StatCard label="Total Docentes" value={soloDocentes.length} />
           <StatCard label="Activos" value={activos} color="text-kahootGreen" />
-          <StatCard label="Inactivos" value={docentes.length - activos} color="text-deny" />
+          <StatCard label="Inactivos" value={soloDocentes.length - activos} color="text-deny" />
         </div>
 
-        {/* Tabla de docentes */}
+        {/* Tabla */}
         <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-mist/50">
           <div className="flex items-center justify-between px-8 py-6 border-b border-mist">
-            <h2 className="font-black text-2xl">Docentes</h2>
-            <button
-              onClick={() => setModalCrear(true)}
-              className="btn-primary bg-kahootBlue text-sm px-6 py-3"
-            >
-              + Agregar Docente
-            </button>
+            <h2 className="font-black text-2xl">Usuarios</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={cargarDocentes}
+                disabled={cargando}
+                className="font-bold text-sm text-ink/50 hover:text-ink border-2 border-mist px-4 py-2.5 rounded-xl hover:bg-gameBg transition-colors disabled:opacity-40"
+              >
+                {cargando ? '…' : '↺ Recargar'}
+              </button>
+              <button
+                onClick={() => setModalCrear(true)}
+                className="btn-primary bg-kahootBlue text-sm px-6 py-3"
+              >
+                + Agregar Docente
+              </button>
+            </div>
           </div>
 
           {cargando ? (
             <div className="py-16 text-center font-bold text-ink/40 animate-pulse">
-              Cargando docentes…
+              Cargando…
+            </div>
+          ) : errorCarga ? (
+            <div className="py-10 px-8 text-center">
+              <p className="font-bold text-deny mb-4">{errorCarga}</p>
+              <button onClick={cargarDocentes} className="btn-primary bg-kahootBlue px-6 py-3 text-sm">
+                Reintentar
+              </button>
             </div>
           ) : docentes.length === 0 ? (
             <div className="py-16 text-center">
-              <p className="font-black text-xl text-ink/30 mb-2">Sin docentes registrados</p>
+              <p className="font-black text-xl text-ink/30 mb-2">Sin usuarios registrados</p>
               <p className="font-bold text-sm text-ink/40">Agrega el primer docente con el botón de arriba.</p>
             </div>
           ) : (
@@ -126,47 +158,68 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-mist/50">
-                  {docentes.map((d) => (
-                    <tr key={d.uid} className="hover:bg-gameBg/50 transition-colors">
-                      <td className="px-8 py-4 font-black text-sm">{d.nombre}</td>
-                      <td className="px-4 py-4 font-bold text-sm text-ink/60">{d.email}</td>
-                      <td className="px-4 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                          d.activo
-                            ? 'bg-kahootGreen/10 text-kahootGreen'
-                            : 'bg-deny/10 text-deny'
-                        }`}>
-                          {d.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 font-bold text-xs text-ink/40">
-                        {d.creado_en ? new Date(d.creado_en).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2 justify-end flex-wrap">
-                          <AccionBtn
-                            onClick={() => toggleActivo(d)}
-                            disabled={accion.uid === d.uid}
-                            color={d.activo ? 'text-deny' : 'text-kahootGreen'}
-                          >
-                            {accion.uid === d.uid && accion.tipo !== 'eliminar'
-                              ? '…'
-                              : d.activo ? 'Desactivar' : 'Activar'}
-                          </AccionBtn>
-                          <AccionBtn onClick={() => setModalPassword(d)} color="text-kahootBlue">
-                            Contraseña
-                          </AccionBtn>
-                          <AccionBtn
-                            onClick={() => setConfirmarEliminar(d)}
-                            disabled={accion.uid === d.uid}
-                            color="text-deny"
-                          >
-                            {accion.uid === d.uid && accion.tipo === 'eliminar' ? '…' : 'Eliminar'}
-                          </AccionBtn>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {docentes.map((d) => {
+                    const esAdmin = d.rol === 'admin';
+                    const esPropioUsuario = d.uid === user?.uid;
+                    return (
+                      <tr key={d.uid} className="hover:bg-gameBg/50 transition-colors">
+                        <td className="px-8 py-4">
+                          <div className="font-black text-sm">{d.nombre}</div>
+                          {esAdmin && (
+                            <span className="text-xs font-bold text-kahootBlue/60 uppercase tracking-wider">
+                              Administrador
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 font-bold text-sm text-ink/60">{d.email}</td>
+                        <td className="px-4 py-4">
+                          {esAdmin ? (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-kahootBlue/10 text-kahootBlue">
+                              Admin
+                            </span>
+                          ) : (
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                              d.activo
+                                ? 'bg-kahootGreen/10 text-kahootGreen'
+                                : 'bg-deny/10 text-deny'
+                            }`}>
+                              {d.activo ? 'Activo' : 'Inactivo'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 font-bold text-xs text-ink/40">
+                          {d.creado_en ? new Date(d.creado_en).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2 justify-end flex-wrap">
+                            {!esAdmin && (
+                              <AccionBtn
+                                onClick={() => toggleActivo(d)}
+                                disabled={accion.uid === d.uid}
+                                color={d.activo ? 'text-deny' : 'text-kahootGreen'}
+                              >
+                                {accion.uid === d.uid && accion.tipo === 'toggle'
+                                  ? '…'
+                                  : d.activo ? 'Desactivar' : 'Activar'}
+                              </AccionBtn>
+                            )}
+                            <AccionBtn onClick={() => setModalPassword(d)} color="text-kahootBlue">
+                              Contraseña
+                            </AccionBtn>
+                            {!esAdmin && (
+                              <AccionBtn
+                                onClick={() => setConfirmarEliminar(d)}
+                                disabled={accion.uid === d.uid}
+                                color="text-deny"
+                              >
+                                {accion.uid === d.uid && accion.tipo === 'eliminar' ? '…' : 'Eliminar'}
+                              </AccionBtn>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -174,7 +227,6 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* Modal: Crear Docente */}
       {modalCrear && (
         <ModalCrearDocente
           onClose={() => setModalCrear(false)}
@@ -182,15 +234,14 @@ export default function AdminPanel() {
         />
       )}
 
-      {/* Modal: Cambiar Contraseña */}
       {modalPassword && (
-        <ModalCambiarPassword
+        <ModalEnviarPassword
           docente={modalPassword}
           onClose={() => setModalPassword(null)}
+          onExito={(msg) => { setMensaje(msg); setTimeout(() => setMensaje(''), 6000); }}
         />
       )}
 
-      {/* Modal: Confirmar Eliminación */}
       {confirmarEliminar && (
         <Backdrop onClick={() => setConfirmarEliminar(null)}>
           <div
@@ -202,7 +253,7 @@ export default function AdminPanel() {
               <span className="text-ink">{confirmarEliminar.nombre}</span>
             </p>
             <p className="text-sm font-bold text-deny mb-8">
-              Esta acción no se puede deshacer. Las sesiones del docente permanecerán en la base de datos.
+              Esta acción no se puede deshacer. El docente perderá acceso a la plataforma.
             </p>
             <div className="flex gap-3">
               <button
@@ -212,7 +263,7 @@ export default function AdminPanel() {
                 Cancelar
               </button>
               <button
-                onClick={() => handleEliminar(confirmarEliminar.uid)}
+                onClick={() => handleEliminar(confirmarEliminar)}
                 disabled={accion.uid === confirmarEliminar.uid}
                 className="flex-1 py-3 rounded-xl font-bold bg-deny text-white hover:bg-deny/80 transition-colors"
               >
@@ -227,7 +278,7 @@ export default function AdminPanel() {
 }
 
 // ---------------------------------------------------------------------------
-// Modal: Crear Docente
+// Modal: Crear Docente (usando segunda instancia de Firebase para no cerrar sesión del admin)
 // ---------------------------------------------------------------------------
 function ModalCrearDocente({ onClose, onCreado }) {
   const [nombre, setNombre] = useState('');
@@ -246,19 +297,43 @@ function ModalCrearDocente({ onClose, onCreado }) {
     }
     if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
     setCargando(true);
+
+    // Usamos una segunda instancia de Firebase para crear el usuario
+    // sin cerrar la sesión del admin.
+    const appName = `secondary-${Date.now()}`;
+    const secondaryApp = initializeApp(app.options, appName);
+    const secondaryAuth = getAuth(secondaryApp);
+
     try {
-      await httpsCallable(functions, 'crearDocente')({
+      const cred = await createUserWithEmailAndPassword(
+        secondaryAuth,
+        email.trim().toLowerCase(),
+        password
+      );
+      const uid = cred.user.uid;
+
+      await authSignOut(secondaryAuth);
+
+      await set(ref(db, `usuarios/${uid}`), {
         nombre: nombre.trim(),
         email: email.trim().toLowerCase(),
-        password,
+        rol: 'docente',
+        activo: true,
+        creado_en: Date.now(),
       });
+
       setExito(`Docente "${nombre.trim()}" creado exitosamente.`);
       await onCreado();
       setTimeout(onClose, 1500);
     } catch (e) {
-      setError(e.message || 'Error al crear el docente.');
+      if (e.code === 'auth/email-already-in-use') {
+        setError('Ya existe una cuenta con ese correo.');
+      } else {
+        setError(e.message || 'Error al crear el docente.');
+      }
     } finally {
       setCargando(false);
+      await deleteApp(secondaryApp);
     }
   }
 
@@ -314,28 +389,21 @@ function ModalCrearDocente({ onClose, onCreado }) {
 }
 
 // ---------------------------------------------------------------------------
-// Modal: Cambiar Contraseña
+// Modal: Enviar link de restablecimiento de contraseña al docente
 // ---------------------------------------------------------------------------
-function ModalCambiarPassword({ docente, onClose }) {
-  const [password, setPassword] = useState('');
-  const [confirmar, setConfirmar] = useState('');
-  const [verPass, setVerPass] = useState(false);
+function ModalEnviarPassword({ docente, onClose, onExito }) {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
-  const [exito, setExito] = useState('');
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleEnviar() {
     setError('');
-    if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
-    if (password !== confirmar) return setError('Las contraseñas no coinciden.');
     setCargando(true);
     try {
-      await httpsCallable(functions, 'cambiarPasswordDocente')({ uid: docente.uid, password });
-      setExito('Contraseña actualizada exitosamente.');
-      setTimeout(onClose, 1500);
+      await sendPasswordResetEmail(getAuth(), docente.email);
+      onExito(`Se envió un link de restablecimiento de contraseña a ${docente.email}.`);
+      onClose();
     } catch (e) {
-      setError(e.message || 'Error al cambiar la contraseña.');
+      setError(e.message || 'Error al enviar el correo.');
     } finally {
       setCargando(false);
     }
@@ -347,51 +415,22 @@ function ModalCambiarPassword({ docente, onClose }) {
         className="bg-white rounded-3xl p-8 w-full max-w-md shadow-xl"
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="font-black text-2xl mb-1">Cambiar Contraseña</h3>
+        <h3 className="font-black text-2xl mb-1">Restablecer Contraseña</h3>
         <p className="font-bold text-ink/50 text-sm mb-6">{docente.nombre}</p>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <CampoModal label="Nueva contraseña">
-            <div className="relative">
-              <input
-                type={verPass ? 'text' : 'password'}
-                className="field pr-12"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-                disabled={cargando}
-                autoFocus
-                required
-              />
-              <button type="button" onClick={() => setVerPass(!verPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink text-sm font-bold">
-                {verPass ? 'Ocultar' : 'Ver'}
-              </button>
-            </div>
-          </CampoModal>
-          <CampoModal label="Confirmar contraseña">
-            <input
-              type={verPass ? 'text' : 'password'}
-              className="field"
-              value={confirmar}
-              onChange={e => setConfirmar(e.target.value)}
-              placeholder="Repite la contraseña"
-              disabled={cargando}
-              required
-            />
-          </CampoModal>
-          {error && <p className="text-deny font-bold text-sm">{error}</p>}
-          {exito && <p className="text-kahootGreen font-bold text-sm">{exito}</p>}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors">
-              Cancelar
-            </button>
-            <button type="submit" disabled={cargando}
-              className="flex-1 btn-primary bg-ink py-3">
-              {cargando ? 'Guardando…' : 'Guardar Contraseña'}
-            </button>
-          </div>
-        </form>
+        <p className="text-sm font-bold text-ink/60 mb-6">
+          Se enviará un link a <span className="text-ink">{docente.email}</span> para que el docente establezca una nueva contraseña.
+        </p>
+        {error && <p className="text-deny font-bold text-sm mb-4">{error}</p>}
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors">
+            Cancelar
+          </button>
+          <button onClick={handleEnviar} disabled={cargando}
+            className="flex-1 btn-primary bg-kahootBlue py-3">
+            {cargando ? 'Enviando…' : 'Enviar link al correo'}
+          </button>
+        </div>
       </div>
     </Backdrop>
   );

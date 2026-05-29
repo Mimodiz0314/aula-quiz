@@ -3,8 +3,8 @@
     "usuarios": {
       ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid && !data.exists() && (newData.child('rol').val() === 'docente' || !root.child('usuarios').exists())"
+        ".read": "auth != null && (auth.uid === $uid || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin')",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || (auth.uid === $uid && !data.exists() && (newData.child('rol').val() === 'docente' || !root.child('usuarios').exists())))"
       }
     },
     "sesiones": {
