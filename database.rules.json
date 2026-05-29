@@ -49,6 +49,12 @@
         ".read": "auth != null && (auth.uid === $uid || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin')",
         ".write": "auth != null && auth.uid === $uid && root.child('usuarios').child(auth.uid).child('activo').val() === true"
       }
+    },
+    "historial": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }

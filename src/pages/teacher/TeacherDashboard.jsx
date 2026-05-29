@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
-import { obtenerHistorialDocente, ESTADOS } from '../../services/sessionService.js';
+import { obtenerHistorialDocente } from '../../services/sessionService.js';
 
 export default function TeacherDashboard() {
   const { userData, logout, cambiarMiPassword } = useAuth();
@@ -10,6 +10,7 @@ export default function TeacherDashboard() {
   const [historial, setHistorial] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(true);
   const [modalPassword, setModalPassword] = useState(false);
+  const [sesionDetalle, setSesionDetalle] = useState(null); // sesión seleccionada para ver notas
 
   useEffect(() => {
     obtenerHistorialDocente()
@@ -17,9 +18,6 @@ export default function TeacherDashboard() {
       .catch(console.error)
       .finally(() => setCargandoHistorial(false));
   }, []);
-
-  const sesionesFinalizadas = historial.filter(s => s.estado_actual === ESTADOS.RESULTADOS_FINALES).length;
-  const sesionesActivas = historial.filter(s => s.estado_actual !== ESTADOS.RESULTADOS_FINALES).length;
 
   return (
     <main className="min-h-screen bg-gameBg">
@@ -58,8 +56,18 @@ export default function TeacherDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
           <StatCard label="Total Sesiones" value={historial.length} />
-          <StatCard label="Finalizadas" value={sesionesFinalizadas} color="text-kahootGreen" />
-          <StatCard label="Activas" value={sesionesActivas} color="text-kahootBlue" />
+          <StatCard
+            label="Promedio general"
+            value={historial.length > 0
+              ? (historial.reduce((s, h) => s + (h.promedio_grupo || 0), 0) / historial.length).toFixed(1)
+              : '—'}
+            color="text-kahootGreen"
+          />
+          <StatCard
+            label="Estudiantes evaluados"
+            value={historial.reduce((s, h) => s + (h.total_estudiantes || 0), 0)}
+            color="text-kahootBlue"
+          />
         </div>
 
         {/* Acción principal */}
@@ -78,7 +86,8 @@ export default function TeacherDashboard() {
         {/* Historial de sesiones */}
         <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden">
           <div className="px-8 py-6 border-b border-mist flex items-center justify-between">
-            <h2 className="font-black text-xl">Sesiones recientes</h2>
+            <h2 className="font-black text-xl">Sesiones anteriores</h2>
+            <span className="text-sm font-bold text-ink/40">{historial.length} registros</span>
           </div>
 
           {cargandoHistorial ? (
@@ -94,15 +103,20 @@ export default function TeacherDashboard() {
             <div className="divide-y divide-mist/50">
               {historial.map((s) => (
                 <SesionFila
-                  key={s.pin}
+                  key={s.key}
                   sesion={s}
-                  onClick={() => navigate(`/docente/sesion/${s.pin}`)}
+                  onClick={() => setSesionDetalle(s)}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal: ver notas de una sesión */}
+      {sesionDetalle && (
+        <ModalNotas sesion={sesionDetalle} onClose={() => setSesionDetalle(null)} />
+      )}
 
       {/* Modal: Cambiar mi contraseña */}
       {modalPassword && (
@@ -116,14 +130,16 @@ export default function TeacherDashboard() {
 }
 
 // ---------------------------------------------------------------------------
-// Fila de sesión
+// Fila de sesión en el historial
 // ---------------------------------------------------------------------------
 function SesionFila({ sesion, onClick }) {
-  const finalizada = sesion.estado_actual === ESTADOS.RESULTADOS_FINALES;
-  const nEstudiantes = Object.keys(sesion.estudiantes || {}).length;
-  const fecha = sesion.creada_en ? new Date(sesion.creada_en).toLocaleDateString('es', {
-    day: 'numeric', month: 'short', year: 'numeric'
-  }) : '—';
+  const nEstudiantes = sesion.total_estudiantes || 0;
+  const promedio = sesion.promedio_grupo;
+  const fecha = sesion.cerrada_en
+    ? new Date(sesion.cerrada_en).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })
+    : sesion.creada_en
+      ? new Date(sesion.creada_en).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '—';
 
   return (
     <button
@@ -135,20 +151,151 @@ function SesionFila({ sesion, onClick }) {
           {sesion.pin}
         </span>
         <div className="min-w-0">
-          <div className="font-bold text-sm text-ink truncate">
-            {sesion.preguntas?.length ?? 0} preguntas · {nEstudiantes} estudiante{nEstudiantes !== 1 ? 's' : ''}
+          {sesion.tema && (
+            <div className="font-black text-base text-ink truncate">
+              {sesion.tema}
+            </div>
+          )}
+          <div className="font-bold text-sm text-ink/70 truncate">
+            {sesion.total_preguntas ?? 0} preguntas · {nEstudiantes} estudiante{nEstudiantes !== 1 ? 's' : ''}
           </div>
           <div className="font-bold text-xs text-ink/40">{fecha}</div>
         </div>
       </div>
-      <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-        finalizada
-          ? 'bg-kahootGreen/10 text-kahootGreen'
-          : 'bg-kahootYellow/20 text-ink'
-      }`}>
-        {finalizada ? 'Finalizado' : 'Activo'}
-      </span>
+      <div className="flex items-center gap-3 shrink-0">
+        {promedio !== undefined && (
+          <span className={`font-black text-xl ${
+            promedio >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'
+          }`}>
+            Prom. {promedio}
+          </span>
+        )}
+        <span className="text-ink/30 text-sm font-bold">Ver notas →</span>
+      </div>
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Modal: Tabla de notas de una sesión archivada
+// ---------------------------------------------------------------------------
+function ModalNotas({ sesion, onClose }) {
+  const navigate = useNavigate();
+  const resultados = sesion.resultados || [];
+  const aprobados = resultados.filter(r => r.nota >= 3.0).length;
+
+  function republicarCuestionario() {
+    navigate('/docente/nueva', {
+      state: {
+        actividades: sesion.preguntas || [],
+        tema: sesion.tema || ''
+      }
+    });
+  }
+
+  function exportarCSV() {
+    const head = 'Puesto,Nombre,Grado,Nota,Aciertos,Total\n';
+    const body = resultados.map((r, i) =>
+      `${i + 1},"${r.nombre}","${r.grado || ''}",${r.nota},${r.aciertos},${r.total}`
+    ).join('\n');
+    const blob = new Blob(['\uFEFF' + head + body], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `notas-${sesion.pin}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header modal */}
+        <div className="px-8 py-6 border-b border-mist flex items-start justify-between gap-4">
+          <div>
+            <div className="font-bold text-xs tracking-widest uppercase text-ink/40 mb-1">Sesión PIN</div>
+            <div className="font-black text-3xl text-kahootBlue">{sesion.pin}</div>
+            {sesion.tema && (
+              <div className="font-black text-lg text-ink mt-1">
+                Tema: {sesion.tema}
+              </div>
+            )}
+            <div className="font-bold text-sm text-ink/50 mt-1">
+              {sesion.total_preguntas ?? 0} preguntas · {resultados.length} estudiantes ·
+              Prom. <span className={sesion.promedio_grupo >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'}>
+                {sesion.promedio_grupo ?? '—'}
+              </span>
+              · Aprobados {aprobados}/{resultados.length}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-ink/30 hover:text-ink text-2xl font-bold leading-none">✕</button>
+        </div>
+
+        {/* Tabla de notas */}
+        <div className="overflow-y-auto flex-1 px-8 py-4">
+          {resultados.length === 0 ? (
+            <p className="text-center text-ink/40 font-bold py-8">No hay estudiantes registrados.</p>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b-2 border-mist">
+                  <th className="py-2 px-2 font-bold text-xs uppercase text-ink/40 w-10">#</th>
+                  <th className="py-2 px-2 font-bold text-xs uppercase text-ink/40">Nombre</th>
+                  <th className="py-2 px-2 font-bold text-xs uppercase text-ink/40 text-right">Nota</th>
+                  <th className="py-2 px-2 font-bold text-xs uppercase text-ink/40 text-right hidden md:table-cell">Aciertos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados.map((r, i) => (
+                  <tr key={r.id} className="border-b border-mist/40 hover:bg-gameBg/50 transition-colors">
+                    <td className="py-3 px-2 font-bold text-ink/30 text-sm">{i + 1}</td>
+                    <td className="py-3 px-2">
+                      <div className="font-bold text-ink">{r.nombre}</div>
+                      {r.grado && <div className="text-xs font-bold text-ink/40">{r.grado}</div>}
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      <span className={`font-black text-xl ${
+                        r.nota >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'
+                      }`}>
+                        {r.nota.toFixed(1)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-right font-bold text-ink/50 hidden md:table-cell">
+                      {r.aciertos}/{r.total}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer con exportar */}
+        <div className="px-8 py-5 border-t border-mist flex flex-wrap gap-3 justify-end">
+          <button
+            onClick={republicarCuestionario}
+            className="btn-secondary flex items-center gap-2 text-kahootBlue border-kahootBlue/30 hover:bg-kahootBlue/5"
+          >
+            🔄 Reutilizar Cuestionario
+          </button>
+          <button
+            onClick={exportarCSV}
+            className="btn-secondary flex items-center gap-2 text-kahootGreen border-kahootGreen/30"
+          >
+            📊 Exportar CSV
+          </button>
+          <button onClick={onClose} className="btn-primary bg-ink">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

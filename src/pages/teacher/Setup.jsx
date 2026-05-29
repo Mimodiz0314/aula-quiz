@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { generarActividades } from '../../services/aiService.js';
 import { crearSesion } from '../../services/sessionService.js';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ReviewActivities from '../../components/ReviewActivities.jsx';
 import { TIPOS, TIPOS_LISTA } from '../../types/activityTypes.js';
 
 const CONTADORES_INICIAL = Object.fromEntries(TIPOS_LISTA.map(t => [t.key, 0]));
 
 export default function Setup({ onCreated }) {
-  const [tema, setTema] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [tema, setTema] = useState(location.state?.tema || '');
   const [nivel, setNivel] = useState('bachillerato');
   const [contadores, setContadores] = useState(CONTADORES_INICIAL);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
-  const [paso, setPaso] = useState('idle');
-  const [actividades, setActividades] = useState([]);
-  const navigate = useNavigate();
+  const [paso, setPaso] = useState(location.state?.actividades ? 'revisando' : 'idle');
+  const [actividades, setActividades] = useState(location.state?.actividades || []);
 
   const total = Object.values(contadores).reduce((s, v) => s + v, 0);
 
@@ -57,7 +59,7 @@ export default function Setup({ onCreated }) {
     setPaso('creando');
     try {
       if (actividadesFinales.length === 0) throw new Error('Debe haber al menos 1 actividad.');
-      const pin = await crearSesion(actividadesFinales);
+      const pin = await crearSesion(actividadesFinales, tema.trim());
       onCreated(pin);
     } catch (e) {
       console.error(e);

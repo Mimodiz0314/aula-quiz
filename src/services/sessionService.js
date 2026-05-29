@@ -55,7 +55,7 @@ export { ESTADOS };
  * Crea una sesión nueva con un PIN único. Reintenta hasta 5 veces
  * si por colisión astronómica el PIN ya existe.
  */
-export async function crearSesion(preguntas) {
+export async function crearSesion(preguntas, tema = '') {
   const docenteUid = auth.currentUser?.uid;
   if (!docenteUid) throw new Error('Debes estar autenticado para crear una sesión.');
 
@@ -72,6 +72,7 @@ export async function crearSesion(preguntas) {
       pregunta_inicio_ts: null,
       pregunta_duracion: 0, // 0 = Sin límite de tiempo
       preguntas,
+      tema,
       estudiantes: {},
     });
     return pin;
@@ -144,30 +145,74 @@ export async function siguientePregunta(pin) {
   });
 }
 
-/** Cierra/elimina la sesión. */
+/**
+ * Cierra la sesión:
+ * 1. Guarda un snapshot completo en /historial/{docenteUid}/{key}
+ * 2. Borra la sesión activa de /sesiones/{pin}
+ */
 export async function cerrarSesion(pin) {
+  const docenteUid = auth.currentUser?.uid;
+
+  // 1. Leer el estado completo de la sesión antes de borrar
+  const snap = await get(ref(db, `sesiones/${pin}`));
+  if (snap.exists() && docenteUid) {
+    const sesion = snap.val();
+    const preguntas = sesion.preguntas || [];
+    const estudiantes = sesion.estudiantes || {};
+
+    // Calcular nota final de cada estudiante
+    const resultados = Object.entries(estudiantes).map(([id, est]) => {
+      const { aciertos, nota } = evaluarEstudiante(est, preguntas);
+      return {
+        id,
+        nombre: est.nombre || 'Sin nombre',
+        grado: est.grado || '',
+        aciertos,
+        nota: parseFloat(nota.toFixed(1)),
+        total: preguntas.length,
+      };
+    }).sort((a, b) => b.nota - a.nota);
+
+    const promedio = resultados.length > 0
+      ? parseFloat((resultados.reduce((s, r) => s + r.nota, 0) / resultados.length).toFixed(1))
+      : 0;
+
+    // Guardar snapshot en historial
+    const historialRef = push(ref(db, `historial/${docenteUid}`));
+    await set(historialRef, {
+      pin,
+      tema: sesion.tema || '',
+      creada_en: sesion.creada_en || Date.now(),
+      cerrada_en: Date.now(),
+      total_preguntas: preguntas.length,
+      total_estudiantes: resultados.length,
+      promedio_grupo: promedio,
+      preguntas,          // cuestionario completo
+      resultados,         // notas de cada estudiante
+    });
+  }
+
+  // 2. Borrar la sesión activa
   await set(ref(db, `sesiones/${pin}`), null);
 }
 
-/** Obtiene el historial de sesiones del docente actual */
+/** Obtiene el historial de sesiones cerradas del docente actual */
 export async function obtenerHistorialDocente() {
   const docenteUid = auth.currentUser?.uid;
   if (!docenteUid) throw new Error('Debes estar autenticado.');
 
-  const sesionesRef = ref(db, 'sesiones');
-  const q = query(sesionesRef, orderByChild('docente_uid'), equalTo(docenteUid));
-  const snapshot = await get(q);
-  
-  if (!snapshot.exists()) return [];
+  // Lee desde /historial/{uid} — path privado del docente, sin restricciones de query
+  const snap = await get(ref(db, `historial/${docenteUid}`));
+  if (!snap.exists()) return [];
 
-  const data = snapshot.val();
-  const history = Object.keys(data).map(pin => ({
-    pin,
-    ...data[pin]
+  const data = snap.val();
+  const history = Object.entries(data).map(([key, entry]) => ({
+    key,
+    ...entry,
   }));
-  
-  // Ordenar por fecha de creación (más reciente primero)
-  return history.sort((a, b) => b.creada_en - a.creada_en);
+
+  // Ordenar por fecha de cierre (más reciente primero)
+  return history.sort((a, b) => (b.cerrada_en || 0) - (a.cerrada_en || 0));
 }
 
 // ---------- ESTUDIANTE ----------

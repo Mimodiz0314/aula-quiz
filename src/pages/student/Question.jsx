@@ -134,11 +134,46 @@ function YaRespondio() {
   );
 }
 
+// Pantalla neutra que reemplaza las opciones al confirmar.
+// No muestra QUÉ respondió el estudiante para no dar pistas.
+function RespuestaEnviada() {
+  return (
+    <section className="flex-1 flex flex-col items-center justify-center gap-6 py-10 animate-fade-in">
+      <div className="relative flex items-center justify-center">
+        {/* Anillo pulsante */}
+        <span className="absolute w-28 h-28 rounded-full bg-kahootGreen/20 animate-ping" />
+        <span className="absolute w-20 h-20 rounded-full bg-kahootGreen/30" />
+        <div className="relative w-16 h-16 rounded-full bg-kahootGreen flex items-center justify-center shadow-lg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"
+               strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      </div>
+      <div className="text-center">
+        <p className="font-black text-2xl text-ink">¡Respuesta enviada!</p>
+        <p className="font-bold text-ink/50 mt-1">Esperando al docente…</p>
+      </div>
+      {/* Barra de puntos animados */}
+      <div className="flex gap-2">
+        {[0, 1, 2].map(i => (
+          <span
+            key={i}
+            className="w-3 h-3 rounded-full bg-kahootGreen/60 animate-bounce"
+            style={{ animationDelay: `${i * 150}ms` }}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 1. seleccion_clasica
 // ---------------------------------------------------------------------------
 function SeleccionUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder }) {
   const [pendiente, setPendiente] = useState(null);
+  const confirmada = yaRespondio || pendiente !== null;
 
   async function onElegir(i) {
     if (bloqueado || yaRespondio || pendiente !== null) return;
@@ -146,8 +181,17 @@ function SeleccionUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder
     await responder(i);
   }
 
-  const opcionActiva = miRespuesta !== undefined ? miRespuesta : pendiente;
-  const confirmada = miRespuesta !== undefined;
+  // Al confirmar → pantalla neutra, sin revelar cuál se eligió
+  if (confirmada) {
+    return (
+      <>
+        <EnunciadoCard>
+          <h2 className="font-black text-2xl md:text-4xl leading-tight">{actividad.pregunta}</h2>
+        </EnunciadoCard>
+        <RespuestaEnviada />
+      </>
+    );
+  }
 
   return (
     <>
@@ -158,35 +202,21 @@ function SeleccionUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder
         {actividad.opciones.map((op, i) => {
           const Shape = SHAPES[i % 4];
           const colorClass = OPTION_COLORS[i % 4];
-          const esActiva = opcionActiva === i;
-          const otraSeleccionada = opcionActiva !== null && opcionActiva !== undefined && !esActiva;
           return (
             <button
               key={i}
               onClick={() => onElegir(i)}
-              disabled={bloqueado || otraSeleccionada}
-              className={`btn-3d ${colorClass} flex flex-col items-center justify-center min-h-[140px] p-4 ${
-                otraSeleccionada ? 'opacity-30 grayscale-[50%]' : ''
-              }`}
+              disabled={bloqueado}
+              className={`btn-3d ${colorClass} flex flex-col items-center justify-center min-h-[140px] p-4`}
             >
               <div className="flex items-center w-full gap-4">
                 <div className="shrink-0 drop-shadow-md"><Shape /></div>
                 <span className="flex-1 text-left text-xl md:text-2xl font-bold leading-tight break-words">{op}</span>
-                {esActiva && (
-                  <div className="shrink-0 bg-white/20 rounded-full p-2">
-                    {confirmada ? '✓' : '…'}
-                  </div>
-                )}
               </div>
             </button>
           );
         })}
       </section>
-      {opcionActiva !== null && opcionActiva !== undefined && (
-        <footer className="text-center font-bold text-ink/60 pb-4 animate-fade-in">
-          {confirmada ? '¡Respuesta enviada!' : 'Registrando…'}
-        </footer>
-      )}
     </>
   );
 }
@@ -196,6 +226,7 @@ function SeleccionUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder
 // ---------------------------------------------------------------------------
 function BinarioUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, enunciado, opciones }) {
   const [pendiente, setPendiente] = useState(null);
+  const confirmada = yaRespondio || pendiente !== null;
 
   async function onElegir(val) {
     if (bloqueado || yaRespondio || pendiente !== null) return;
@@ -203,8 +234,16 @@ function BinarioUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
     await responder(val);
   }
 
-  const elegida = miRespuesta ?? pendiente;
-  const confirmada = miRespuesta !== undefined;
+  if (confirmada) {
+    return (
+      <>
+        <EnunciadoCard>
+          <h2 className="font-black text-2xl md:text-3xl leading-snug">{enunciado}</h2>
+        </EnunciadoCard>
+        <RespuestaEnviada />
+      </>
+    );
+  }
 
   return (
     <>
@@ -212,31 +251,17 @@ function BinarioUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
         <h2 className="font-black text-2xl md:text-3xl leading-snug">{enunciado}</h2>
       </EnunciadoCard>
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-        {opciones.map(({ val, label, color }) => {
-          const esElegida = elegida === val;
-          const otraElegida = elegida !== null && elegida !== undefined && !esElegida;
-          return (
-            <button
-              key={val}
-              onClick={() => onElegir(val)}
-              disabled={bloqueado || otraElegida}
-              className={`${color} text-white rounded-2xl shadow-[0_4px_0_0_rgba(0,0,0,0.2)] min-h-[120px] font-black text-2xl md:text-3xl transition-all active:translate-y-1 ${
-                otraElegida ? 'opacity-30 grayscale-[50%]' : ''
-              } ${esElegida ? 'ring-4 ring-white/60' : ''}`}
-            >
-              <div className="flex items-center justify-center gap-3 p-6">
-                {label}
-                {esElegida && <span className="text-2xl">{confirmada ? '✓' : '…'}</span>}
-              </div>
-            </button>
-          );
-        })}
+        {opciones.map(({ val, label, color }) => (
+          <button
+            key={val}
+            onClick={() => onElegir(val)}
+            disabled={bloqueado}
+            className={`${color} text-white rounded-2xl shadow-[0_4px_0_0_rgba(0,0,0,0.2)] min-h-[120px] font-black text-2xl md:text-3xl transition-all active:translate-y-1`}
+          >
+            <div className="flex items-center justify-center gap-3 p-6">{label}</div>
+          </button>
+        ))}
       </section>
-      {elegida && (
-        <footer className="text-center font-bold text-ink/60 pb-4 animate-fade-in">
-          {confirmada ? '¡Respuesta enviada!' : 'Registrando…'}
-        </footer>
-      )}
     </>
   );
 }
@@ -246,6 +271,7 @@ function BinarioUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
 // ---------------------------------------------------------------------------
 function CazaIntrusoUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder }) {
   const [pendiente, setPendiente] = useState(null);
+  const confirmada = yaRespondio || pendiente !== null;
 
   async function onElegir(i) {
     if (bloqueado || yaRespondio || pendiente !== null) return;
@@ -253,8 +279,17 @@ function CazaIntrusoUI({ actividad, bloqueado, yaRespondio, miRespuesta, respond
     await responder(i);
   }
 
-  const elegido = miRespuesta !== undefined ? Number(miRespuesta) : pendiente;
-  const confirmada = miRespuesta !== undefined;
+  if (confirmada) {
+    return (
+      <>
+        <EnunciadoCard>
+          <p className="font-bold text-sm tracking-widest uppercase text-ink/50 mb-2">🔍 Caza el Intruso</p>
+          <h2 className="font-black text-xl md:text-2xl">{actividad.instruccion}</h2>
+        </EnunciadoCard>
+        <RespuestaEnviada />
+      </>
+    );
+  }
 
   return (
     <>
@@ -263,27 +298,16 @@ function CazaIntrusoUI({ actividad, bloqueado, yaRespondio, miRespuesta, respond
         <h2 className="font-black text-xl md:text-2xl">{actividad.instruccion}</h2>
       </EnunciadoCard>
       <section className="grid grid-cols-2 md:grid-cols-3 gap-3 pb-4">
-        {actividad.elementos.map((el, i) => {
-          const esElegido = elegido === i;
-          const otroElegido = elegido !== null && elegido !== undefined && !esElegido;
-          return (
-            <button
-              key={i}
-              onClick={() => onElegir(i)}
-              disabled={bloqueado || otroElegido}
-              className={`bg-white border-2 rounded-2xl p-4 font-bold text-lg shadow-sm transition-all text-center ${
-                esElegido
-                  ? 'border-kahootRed bg-kahootRed/5 ring-2 ring-kahootRed/40'
-                  : otroElegido
-                    ? 'opacity-30 border-mist'
-                    : 'border-mist hover:border-kahootBlue hover:shadow-md'
-              }`}
-            >
-              {el}
-              {esElegido && <div className="mt-1 text-sm text-kahootRed">{confirmada ? '✓' : '…'}</div>}
-            </button>
-          );
-        })}
+        {actividad.elementos.map((el, i) => (
+          <button
+            key={i}
+            onClick={() => onElegir(i)}
+            disabled={bloqueado}
+            className="bg-white border-2 border-mist rounded-2xl p-4 font-bold text-lg shadow-sm transition-all text-center hover:border-kahootBlue hover:shadow-md"
+          >
+            {el}
+          </button>
+        ))}
       </section>
     </>
   );
@@ -294,6 +318,7 @@ function CazaIntrusoUI({ actividad, bloqueado, yaRespondio, miRespuesta, respond
 // ---------------------------------------------------------------------------
 function DetectiveTextoUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder }) {
   const [pendiente, setPendiente] = useState(null);
+  const confirmada = yaRespondio || pendiente !== null;
 
   async function onElegir(i) {
     if (bloqueado || yaRespondio || pendiente !== null) return;
@@ -301,39 +326,45 @@ function DetectiveTextoUI({ actividad, bloqueado, yaRespondio, miRespuesta, resp
     await responder(i);
   }
 
-  const opcionActiva = miRespuesta !== undefined ? miRespuesta : pendiente;
-  const confirmada = miRespuesta !== undefined;
+  // El pasaje siempre visible — solo las opciones se ocultan al confirmar
+  const Pasaje = () => (
+    <section className="mb-4">
+      <div className="bg-white w-full p-5 md:p-8 rounded-2xl shadow-sm border-l-4 border-kahootBlue mb-4">
+        <p className="font-bold text-xs tracking-widest uppercase text-kahootBlue mb-3">🕵️ Pasaje</p>
+        <p className="text-base md:text-lg font-bold text-ink leading-relaxed">{actividad.pasaje}</p>
+      </div>
+      <div className="bg-white w-full py-5 px-6 rounded-2xl shadow-sm text-center">
+        <h2 className="font-black text-xl md:text-3xl leading-tight">{actividad.pregunta}</h2>
+      </div>
+    </section>
+  );
+
+  if (confirmada) {
+    return (
+      <>
+        <Pasaje />
+        <RespuestaEnviada />
+      </>
+    );
+  }
 
   return (
     <>
-      <section className="mb-4">
-        <div className="bg-white w-full p-5 md:p-8 rounded-2xl shadow-sm border-l-4 border-kahootBlue mb-4">
-          <p className="font-bold text-xs tracking-widest uppercase text-kahootBlue mb-3">🕵️ Pasaje</p>
-          <p className="text-base md:text-lg font-bold text-ink leading-relaxed">{actividad.pasaje}</p>
-        </div>
-        <div className="bg-white w-full py-5 px-6 rounded-2xl shadow-sm text-center">
-          <h2 className="font-black text-xl md:text-3xl leading-tight">{actividad.pregunta}</h2>
-        </div>
-      </section>
+      <Pasaje />
       <section className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-4">
         {actividad.opciones.map((op, i) => {
           const Shape = SHAPES[i % 4];
           const colorClass = OPTION_COLORS[i % 4];
-          const esActiva = opcionActiva === i;
-          const otraSeleccionada = opcionActiva !== null && opcionActiva !== undefined && !esActiva;
           return (
             <button
               key={i}
               onClick={() => onElegir(i)}
-              disabled={bloqueado || otraSeleccionada}
-              className={`btn-3d ${colorClass} flex items-center min-h-[80px] p-4 ${
-                otraSeleccionada ? 'opacity-30 grayscale-[50%]' : ''
-              }`}
+              disabled={bloqueado}
+              className={`btn-3d ${colorClass} flex items-center min-h-[80px] p-4`}
             >
               <div className="flex items-center w-full gap-3">
                 <div className="shrink-0 drop-shadow-md"><Shape /></div>
                 <span className="flex-1 text-left text-lg font-bold leading-tight">{op}</span>
-                {esActiva && <span className="shrink-0">{confirmada ? '✓' : '…'}</span>}
               </div>
             </button>
           );
@@ -371,24 +402,14 @@ function OrdenUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, it
     setCargando(false);
   }
 
-  if (confirmada && respuestaGuardada) {
+  if (confirmada) {
     return (
       <>
         <EnunciadoCard>
-          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">🧩 Tu orden</p>
-          <h2 className="font-black text-xl md:text-2xl mb-4">{instruccion}</h2>
-          <div className="space-y-2 text-left">
-            {respuestaGuardada.map((origIdx, pos) => (
-              <div key={pos} className="flex items-center gap-3 bg-kahootGreen/10 rounded-xl p-3">
-                <span className="w-8 h-8 rounded-full bg-kahootGreen text-white font-black text-sm flex items-center justify-center shrink-0">
-                  {pos + 1}
-                </span>
-                <span className="font-bold">{items[origIdx]}</span>
-              </div>
-            ))}
-          </div>
+          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">🧩 Ordena los elementos</p>
+          <h2 className="font-black text-xl md:text-2xl">{instruccion}</h2>
         </EnunciadoCard>
-        <YaRespondio />
+        <RespuestaEnviada />
       </>
     );
   }
@@ -504,22 +525,14 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
     setCargando(false);
   }
 
-  if (confirmada && respuestaGuardada) {
+  if (confirmada) {
     return (
       <>
         <EnunciadoCard>
-          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">🔗 Tus parejas</p>
-          <div className="space-y-2 text-left">
-            {pares.map((par, li) => (
-              <div key={li} className="flex items-center gap-3 bg-gameBg rounded-xl p-3">
-                <span className="flex-1 font-bold text-sm">{par.izquierda}</span>
-                <span className="text-ink/30">↔</span>
-                <span className="flex-1 font-bold text-sm text-right">{pares[respuestaGuardada[li]]?.derecha ?? '—'}</span>
-              </div>
-            ))}
-          </div>
+          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">🔗 Empareja los elementos</p>
+          <h2 className="font-black text-xl md:text-2xl">{actividad.instruccion}</h2>
         </EnunciadoCard>
-        <YaRespondio />
+        <RespuestaEnviada />
       </>
     );
   }
@@ -638,23 +651,14 @@ function ClasificadorUI({ actividad, bloqueado, yaRespondio, miRespuesta, respon
 
   const respuestaGuardada = miRespuesta ? (() => { try { return JSON.parse(miRespuesta); } catch { return null; } })() : null;
 
-  if (confirmada && respuestaGuardada) {
+  if (confirmada) {
     return (
       <>
         <EnunciadoCard>
-          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">📂 Tu clasificación</p>
-          <div className="grid grid-cols-2 gap-4 text-left">
-            {[cat0, cat1].map((cat, ci) => (
-              <div key={ci} className={`p-3 rounded-xl border-2 ${CATEGORY_BORDERS[ci]}`}>
-                <p className="font-black text-sm mb-2">{cat.nombre}</p>
-                {allItems.map((item, i) => respuestaGuardada[i] === ci && (
-                  <div key={i} className="text-sm font-bold text-ink/80 bg-ink/5 rounded-lg px-2 py-1 mb-1">{item}</div>
-                ))}
-              </div>
-            ))}
-          </div>
+          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">📂 El Clasificador</p>
+          <h2 className="font-black text-xl md:text-2xl">{actividad.instruccion}</h2>
         </EnunciadoCard>
-        <YaRespondio />
+        <RespuestaEnviada />
       </>
     );
   }
@@ -751,25 +755,13 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
 
   const respuestaGuardada = miRespuesta ? (() => { try { return JSON.parse(miRespuesta); } catch { return null; } })() : null;
 
-  if (confirmada && respuestaGuardada) {
+  if (confirmada) {
     return (
       <>
         <EnunciadoCard>
-          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-3">✍️ Tu respuesta</p>
-          <p className="text-lg font-bold leading-relaxed">
-            {partes.map((parte, i) => (
-              <span key={i}>
-                {parte}
-                {i < nBlancos && (
-                  <span className="mx-1 px-2 py-0.5 bg-kahootGreen/20 text-kahootGreen font-black rounded-lg border-b-2 border-kahootGreen">
-                    {respuestaGuardada[i]}
-                  </span>
-                )}
-              </span>
-            ))}
-          </p>
+          <p className="font-bold text-xs tracking-widest uppercase text-ink/50 mb-2">✍️ Completa la oración</p>
         </EnunciadoCard>
-        <YaRespondio />
+        <RespuestaEnviada />
       </>
     );
   }

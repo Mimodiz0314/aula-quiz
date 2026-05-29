@@ -123,18 +123,29 @@ export default function ControlPanel({ pin, sesion }) {
             {estudiantes.map(([id, est]) => {
               const respondio = est.respuestas_registradas?.[idx] !== undefined;
               const acertoCorrecto = esRevelado && respondio && esAcierto(actividad, est.respuestas_registradas[idx]);
+
+              let rowBg = 'bg-gameBg';
+              let dotClass = 'w-3 h-3 rounded-full shrink-0';
+              if (respondio && !esRevelado) {
+                rowBg = 'bg-kahootGreen/10';
+                dotClass += ' bg-kahootGreen animate-pulse';
+              } else if (respondio && esRevelado && acertoCorrecto) {
+                rowBg = 'bg-kahootGreen/10';
+                dotClass += ' bg-kahootGreen';
+              } else if (respondio && esRevelado && !acertoCorrecto) {
+                rowBg = 'bg-kahootRed/10';
+                dotClass += ' bg-kahootRed';
+              } else {
+                dotClass += ' bg-mist';
+              }
+
               return (
                 <div
                   key={id}
-                  className="flex items-center justify-between text-sm py-2 px-3 rounded-xl bg-gameBg font-bold"
+                  className={`flex items-center justify-between text-sm py-2 px-3 rounded-xl font-bold ${rowBg}`}
                 >
                   <span className="truncate">{est.nombre}</span>
-                  {esRevelado && respondio
-                    ? <span className={`w-3 h-3 rounded-full shrink-0 ${acertoCorrecto ? 'bg-kahootGreen' : 'bg-kahootRed'}`} />
-                    : respondio
-                      ? <span className="w-3 h-3 bg-kahootGreen rounded-full shadow-sm shrink-0" />
-                      : <span className="w-3 h-3 bg-mist rounded-full shrink-0" />
-                  }
+                  <span className={dotClass} />
                 </div>
               );
             })}
@@ -219,7 +230,7 @@ function SeleccionView({ actividad, tipo, estudiantes, idx, respondieron, esReve
                   ? <span className="bg-white/20 px-3 py-1 rounded-full font-black text-sm uppercase tracking-wider">✓ Correcta</span>
                   : <span />
                 }
-                <span className="font-black text-3xl drop-shadow-md">{conteo}</span>
+                <span className="font-black text-3xl drop-shadow-md">{esRevelado ? conteo : '?'}</span>
               </div>
               {esRevelado && (
                 <div
