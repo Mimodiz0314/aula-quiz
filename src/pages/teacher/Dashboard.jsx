@@ -33,9 +33,9 @@ export default function Dashboard({ pin, sesion }) {
   const aprobados = filas.filter((f) => f.nota >= 3.0).length;
 
   async function handleCerrar() {
-    if (!confirm('¿Cerrar y borrar la sesión definitivamente?')) return;
+    if (!confirm('¿Quieres finalizar esta sesión de juego y guardar los resultados en tu historial?')) return;
     await cerrarSesion(pin);
-    navigate('/');
+    navigate('/docente');
   }
 
   function exportarExcel() {
@@ -168,6 +168,12 @@ export default function Dashboard({ pin, sesion }) {
       <header className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm mb-8">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/')} className="btn-ghost no-print">⌂ Inicio</button>
+          <button
+            onClick={handleCerrar}
+            className="font-bold text-sm tracking-widest uppercase text-kahootBlue hover:text-kahootBlue/80 transition-colors no-print flex items-center gap-1.5"
+          >
+            💾 Guardar y ver Historial
+          </button>
           <div className="font-bold text-sm tracking-widest uppercase text-ink/50 bg-mist/50 px-3 py-1 rounded-full">
             Resultados · PIN {pin}
           </div>
@@ -307,7 +313,12 @@ export default function Dashboard({ pin, sesion }) {
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-3 no-print">
-            <button onClick={handleCerrar} className="btn-primary bg-kahootRed w-full">Cerrar Sesión</button>
+            <button
+              onClick={handleCerrar}
+              className="btn-primary bg-kahootGreen w-full flex items-center justify-center gap-2 text-white shadow-md hover:bg-kahootGreen/90 transition-all font-black"
+            >
+              💾 Guardar y volver a Mi Panel
+            </button>
           </div>
         </aside>
       </div>

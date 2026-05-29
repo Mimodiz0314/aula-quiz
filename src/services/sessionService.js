@@ -151,14 +151,14 @@ export async function siguientePregunta(pin) {
  * 2. Borra la sesión activa de /sesiones/{pin}
  */
 export async function cerrarSesion(pin) {
-  const docenteUid = auth.currentUser?.uid;
-
   // 1. Leer el estado completo de la sesión antes de borrar
   const snap = await get(ref(db, `sesiones/${pin}`));
-  if (snap.exists() && docenteUid) {
+  if (snap.exists()) {
     const sesion = snap.val();
-    const preguntas = sesion.preguntas || [];
-    const estudiantes = sesion.estudiantes || {};
+    const docenteUid = sesion.docente_uid || auth.currentUser?.uid;
+    if (docenteUid) {
+      const preguntas = sesion.preguntas || [];
+      const estudiantes = sesion.estudiantes || {};
 
     // Calcular nota final de cada estudiante
     const resultados = Object.entries(estudiantes).map(([id, est]) => {
@@ -190,6 +190,7 @@ export async function cerrarSesion(pin) {
       preguntas,          // cuestionario completo
       resultados,         // notas de cada estudiante
     });
+    }
   }
 
   // 2. Borrar la sesión activa
@@ -236,9 +237,15 @@ export async function validarPin(pin) {
  * Usa `runTransaction` para evitar nombres duplicados.
  */
 export async function registrarEstudiante(pin, nombre, grado) {
-  // Autenticación anónima obligatoria para escribir en la base de datos de forma segura
-  const userCredential = await signInAnonymously(auth);
-  const uid = userCredential.user.uid;
+  // Si ya hay un usuario autenticado con correo (docente), no iniciamos sesión anónima
+  // para evitar desautenticar la sesión del docente en este navegador durante pruebas locales.
+  let uid;
+  if (auth.currentUser && !auth.currentUser.isAnonymous) {
+    uid = auth.currentUser.uid;
+  } else {
+    const userCredential = await signInAnonymously(auth);
+    uid = userCredential.user.uid;
+  }
 
   const storageKey = `quiz_student_${pin}`;
   const guardado = localStorage.getItem(storageKey);
