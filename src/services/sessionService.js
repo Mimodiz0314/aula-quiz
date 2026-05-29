@@ -289,6 +289,12 @@ export async function cerrarSesion(pin) {
   await set(ref(db, `claves/${pin}`), null);
 }
 
+/** Borra una sala activa (y su clave) SIN archivarla en el historial. */
+export async function eliminarSesion(pin) {
+  await set(ref(db, `sesiones/${pin}`), null);
+  await set(ref(db, `claves/${pin}`), null);
+}
+
 /** Elimina un registro de historial del docente actual */
 export async function eliminarHistorial(key) {
   const docenteUid = getEffectiveUid();

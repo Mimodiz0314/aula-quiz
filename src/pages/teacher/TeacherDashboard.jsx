@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
-import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion } from '../../services/sessionService.js';
+import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion, obtenerClaves, eliminarSesion } from '../../services/sessionService.js';
+import { fusionarLista } from '../../utils/clave.js';
 import { listarSalasGuardadas, quitarSala, reemplazarSalas } from '../../utils/savedRooms.js';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 import StudentPreview from '../../components/StudentPreview.jsx';
@@ -15,6 +16,7 @@ export default function TeacherDashboard() {
   const [salasActivas, setSalasActivas] = useState([]);
   const [preview, setPreview] = useState(null);   // sesión a previsualizar (vista estudiante)
   const [imprimir, setImprimir] = useState(null);  // sesión a imprimir (guía PDF)
+  const [confirmDeleteRoom, setConfirmDeleteRoom] = useState(null); // sala activa a borrar
   const [modalPassword, setModalPassword] = useState(false);
   const [sesionDetalle, setSesionDetalle] = useState(null); // sesión seleccionada para ver notas
   const [reutilizando, setReutilizando] = useState(false);
@@ -52,6 +54,62 @@ export default function TeacherDashboard() {
   function quitarDeActivas(pin) {
     quitarSala(user?.uid, pin);
     setSalasActivas(prev => prev.filter(s => s.pin !== pin));
+  }
+
+  // Carga la sala completa (preguntas fusionadas con su clave) para previsualizar,
+  // imprimir, editar o reutilizar una SALA ACTIVA.
+  async function cargarSalaCompleta(pin) {
+    const s = await obtenerSesion(pin);
+    if (!s) { alert('Esta sala ya no existe.'); setSalasActivas(prev => prev.filter(x => x.pin !== pin)); return null; }
+    const claves = await obtenerClaves(pin);
+    return {
+      pin,
+      preguntas: fusionarLista(s.preguntas || [], claves),
+      tema: s.tema || '',
+      grado: s.grado || '',
+      dificultad: s.dificultad || '',
+    };
+  }
+
+  async function previewSala(pin) {
+    const full = await cargarSalaCompleta(pin);
+    if (full) setPreview(full);
+  }
+  async function printSala(pin) {
+    const full = await cargarSalaCompleta(pin);
+    if (full) setImprimir(full);
+  }
+  async function editSala(pin) {
+    const full = await cargarSalaCompleta(pin);
+    if (full) navigate('/docente/nueva', {
+      state: { actividades: full.preguntas, tema: full.tema, grado: full.grado, dificultad: full.dificultad }
+    });
+  }
+  async function reuseSala(pin) {
+    setReutilizando(true);
+    try {
+      const full = await cargarSalaCompleta(pin);
+      if (!full) return;
+      const newPin = await crearSesion(full.preguntas, full.tema, { grado: full.grado, dificultad: full.dificultad });
+      navigate(`/docente/sesion/${newPin}`);
+    } catch (e) {
+      console.error(e);
+      alert('Error al reutilizar la sala: ' + e.message);
+    } finally {
+      setReutilizando(false);
+    }
+  }
+  async function executeDeleteRoom(pin) {
+    try {
+      await eliminarSesion(pin);
+      quitarSala(user?.uid, pin);
+      setSalasActivas(prev => prev.filter(s => s.pin !== pin));
+    } catch (e) {
+      console.error(e);
+      alert('Error al borrar la sala: ' + e.message);
+    } finally {
+      setConfirmDeleteRoom(null);
+    }
   }
 
   function handleEliminar(key) {
@@ -186,20 +244,19 @@ export default function TeacherDashboard() {
                       <MetaBadges grado={s.grado} dificultad={s.dificultad} />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                     <button
                       onClick={() => navigate(`/docente/sesion/${s.pin}`)}
                       className="btn-primary bg-kahootGreen text-white"
                     >
                       Abrir sala
                     </button>
-                    <button
-                      onClick={() => quitarDeActivas(s.pin)}
-                      title="Quitar de la lista (no borra la sala)"
-                      className="p-2 text-ink/30 hover:text-deny hover:bg-deny/10 rounded-xl transition-all"
-                    >
-                      ✕
-                    </button>
+                    <button onClick={() => previewSala(s.pin)} title="Vista previa (como la ve el estudiante)" className="p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all">👁️</button>
+                    <button onClick={() => printSala(s.pin)} title="Imprimir / PDF" className="p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all">🖨️</button>
+                    <button onClick={() => editSala(s.pin)} title="Editar cuestionario" className="p-2 text-kahootBlue hover:bg-kahootBlue/10 rounded-xl transition-all">✏️</button>
+                    <button onClick={() => reuseSala(s.pin)} title="Reutilizar (crear sala nueva)" className="p-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-all">🔄</button>
+                    <button onClick={() => setConfirmDeleteRoom(s.pin)} title="Borrar sala" className="p-2 text-deny hover:bg-deny/10 rounded-xl transition-all">🗑️</button>
+                    <button onClick={() => quitarDeActivas(s.pin)} title="Quitar de la lista (no borra la sala)" className="p-2 text-ink/30 hover:text-ink/60 rounded-xl transition-all">✕</button>
                   </div>
                 </div>
               ))}
@@ -274,6 +331,33 @@ export default function TeacherDashboard() {
           dificultad={imprimir.dificultad || ''}
           onClose={() => setImprimir(null)}
         />
+      )}
+
+      {/* Confirmación: borrar sala activa */}
+      {confirmDeleteRoom && (
+        <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col items-center text-center animate-scale-in">
+            <div className="w-16 h-16 bg-deny/10 rounded-full flex items-center justify-center text-3xl mb-6">🗑️</div>
+            <h3 className="font-black text-2xl mb-3 text-ink">¿Borrar esta sala?</h3>
+            <p className="font-bold text-ink/50 text-sm mb-8 leading-relaxed">
+              Se eliminará la sala activa (PIN {confirmDeleteRoom}) de forma permanente. Si hay estudiantes conectados, se desconectarán. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setConfirmDeleteRoom(null)}
+                className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => executeDeleteRoom(confirmDeleteRoom)}
+                className="flex-1 btn-primary bg-deny hover:bg-deny/90 py-3 text-white font-black"
+              >
+                Sí, borrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal: Cambiar mi contraseña */}
