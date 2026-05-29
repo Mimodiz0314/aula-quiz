@@ -25,7 +25,7 @@ export default function TeacherLogin() {
     if (desactivado) setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
   }, [desactivado]);
 
-  if (!loading && user && !user.isAnonymous && role === 'docente') {
+  if (!loading && user && !user.isAnonymous && (role === 'docente' || role === 'admin')) {
     return <Navigate to="/docente" replace />;
   }
 

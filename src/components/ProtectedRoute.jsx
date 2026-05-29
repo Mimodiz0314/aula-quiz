@@ -21,6 +21,8 @@ export function ProtectedRoute({ children, requiredRole }) {
   }
 
   if (requiredRole && role !== requiredRole) {
+    // El admin puede acceder a rutas de docente (es superusuario)
+    if (requiredRole === 'docente' && role === 'admin') return children;
     return <Navigate to={requiredRole === 'admin' ? '/admin/login' : '/docente/login'} replace />;
   }
 
