@@ -16,8 +16,12 @@ export default defineConfig({
         theme_color: '#2A394B',
         background_color: '#2A394B',
         display: 'standalone',
+        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
         orientation: 'portrait',
         categories: ['education', 'utilities'],
+        prefer_related_applications: false,
+        related_applications: [],
+        iarc_rating_id: 'e',
         icons: [
           { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
