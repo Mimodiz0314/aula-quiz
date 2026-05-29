@@ -21,9 +21,8 @@ export default function TeacherLogin() {
     }
   }, [desactivado]);
 
-  if (!loading && user && !user.isAnonymous) {
-    if (role === 'admin') return <Navigate to="/admin" replace />;
-    if (role === 'docente') return <Navigate to="/docente" replace />;
+  if (!loading && user && !user.isAnonymous && role === 'docente') {
+    return <Navigate to="/docente" replace />;
   }
 
   async function handleLogin(e) {

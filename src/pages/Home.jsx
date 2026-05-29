@@ -58,7 +58,7 @@ export default function Home() {
           </div>
 
           <Link
-            to="/docente"
+            to="/docente/login"
             className="group block w-full max-w-md p-6 border-b-8 border-r-4 border-mist/50 rounded-3xl bg-white text-ink hover:-translate-y-2 transition-all shadow-md text-center"
           >
             <div className="font-black text-sm tracking-widest uppercase text-ink/40 mb-2">
