@@ -6,7 +6,13 @@ export default function FinalScore({ sesion, yo }) {
   useEffect(() => {
     if (!sesion || !sesion.estudiantes) return;
     const todos = Object.values(sesion.estudiantes);
-    todos.sort((a, b) => b.nota_acumulada - a.nota_acumulada);
+    // Ordena por puntaje de juego (igual que el leaderboard en vivo),
+    // con la nota como desempate.
+    todos.sort((a, b) => {
+      const diff = (b.puntos_juego || 0) - (a.puntos_juego || 0);
+      if (diff !== 0) return diff;
+      return (b.nota_acumulada || 0) - (a.nota_acumulada || 0);
+    });
     const pos = todos.findIndex(e => e.nombre === yo.nombre);
     if (pos !== -1) setPuesto(pos + 1);
   }, [sesion, yo]);
@@ -34,9 +40,15 @@ export default function FinalScore({ sesion, yo }) {
           )}
           
           <p className="font-bold text-ink/50 uppercase tracking-widest text-sm mb-2">Tu puesto</p>
-          <div className="text-7xl font-black tabular-nums mb-6">
+          <div className="text-7xl font-black tabular-nums mb-2">
             #{puesto || '-'}
           </div>
+          {yo.puntos_juego !== undefined && yo.puntos_juego !== null && (
+            <p className="font-black text-kahootBlue text-lg mb-6">
+              {(yo.puntos_juego || 0).toLocaleString('es-CO')} pts
+              {(yo.racha || 0) >= 2 && <span className="ml-2">🔥{yo.racha}</span>}
+            </p>
+          )}
 
           <div className="flex justify-between items-center border-t border-mist pt-4">
             <div>

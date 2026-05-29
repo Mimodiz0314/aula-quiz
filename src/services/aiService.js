@@ -6,6 +6,22 @@
 // ---------------------------------------------------------------------------
 // Validadores por tipo — aseguran estructura correcta antes de pasar al editor
 // ---------------------------------------------------------------------------
+// Normaliza el campo "correcto" de actividades binarias: la IA a veces lo
+// devuelve capitalizado, con puntuación o como sinónimo ("verdadero", "ficticio"…).
+// En vez de rechazar la generación entera, lo mapeamos al valor canónico.
+function normalizarVerdadMito(val) {
+  const s = String(val ?? '').toLowerCase();
+  if (/(mito|fals|menti|invent|ficc|ficti)/.test(s)) return 'mito';
+  if (/(verdad|verda|ciert|real)/.test(s)) return 'verdad';
+  return s.trim();
+}
+function normalizarRealInventado(val) {
+  const s = String(val ?? '').toLowerCase();
+  if (/(invent|ficc|ficti|fals|mito)/.test(s)) return 'inventado';
+  if (/(real|verdad|ciert)/.test(s)) return 'real';
+  return s.trim();
+}
+
 const VALIDADORES = {
   seleccion_clasica: (p, i) => {
     if (!p.pregunta) throw new Error(`Actividad ${i + 1}: falta "pregunta".`);
@@ -23,12 +39,13 @@ const VALIDADORES = {
   },
   verdad_mito: (p, i) => {
     if (!p.enunciado) throw new Error(`Actividad ${i + 1}: falta "enunciado".`);
-    if (!['verdad', 'mito'].includes(p.correcto))
+    const correcto = normalizarVerdadMito(p.correcto);
+    if (!['verdad', 'mito'].includes(correcto))
       throw new Error(`Actividad ${i + 1}: "correcto" debe ser "verdad" o "mito".`);
     return {
       tipo: 'verdad_mito',
       enunciado: String(p.enunciado).trim(),
-      correcto: p.correcto,
+      correcto,
       explicacion: String(p.explicacion || '').trim(),
     };
   },
@@ -100,12 +117,13 @@ const VALIDADORES = {
   },
   real_inventado: (p, i) => {
     if (!p.enunciado) throw new Error(`Actividad ${i + 1}: falta "enunciado".`);
-    if (!['real', 'inventado'].includes(p.correcto))
+    const correcto = normalizarRealInventado(p.correcto);
+    if (!['real', 'inventado'].includes(correcto))
       throw new Error(`Actividad ${i + 1}: "correcto" debe ser "real" o "inventado".`);
     return {
       tipo: 'real_inventado',
       enunciado: String(p.enunciado).trim(),
-      correcto: p.correcto,
+      correcto,
       explicacion: String(p.explicacion || '').trim(),
     };
   },

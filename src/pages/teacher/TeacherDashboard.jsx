@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
-import { obtenerHistorialDocente, eliminarHistorial, crearSesion } from '../../services/sessionService.js';
+import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion } from '../../services/sessionService.js';
+import { listarSalasGuardadas, quitarSala, reemplazarSalas } from '../../utils/savedRooms.js';
 
 export default function TeacherDashboard() {
-  const { userData, logout, cambiarMiPassword } = useAuth();
+  const { user, userData, logout, cambiarMiPassword } = useAuth();
   const navigate = useNavigate();
 
   const [historial, setHistorial] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(true);
+  const [salasActivas, setSalasActivas] = useState([]);
   const [modalPassword, setModalPassword] = useState(false);
   const [sesionDetalle, setSesionDetalle] = useState(null); // sesión seleccionada para ver notas
   const [reutilizando, setReutilizando] = useState(false);
@@ -20,6 +22,33 @@ export default function TeacherDashboard() {
       .catch(console.error)
       .finally(() => setCargandoHistorial(false));
   }, []);
+
+  // Carga las salas guardadas (puntero local) y descarta las que ya no existen.
+  useEffect(() => {
+    const uid = user?.uid;
+    if (!uid) return;
+    let activo = true;
+    (async () => {
+      const guardadas = listarSalasGuardadas(uid);
+      const verificadas = [];
+      for (const sala of guardadas) {
+        try {
+          const s = await obtenerSesion(sala.pin);
+          if (s) verificadas.push({ pin: sala.pin, tema: s.tema || sala.tema || '', estado: s.estado_actual });
+        } catch { /* ignore */ }
+      }
+      if (!activo) return;
+      // Auto-limpieza: deja en memoria solo las salas que siguen vivas.
+      reemplazarSalas(uid, verificadas.map(v => ({ pin: v.pin, tema: v.tema, guardada_en: Date.now() })));
+      setSalasActivas(verificadas);
+    })();
+    return () => { activo = false; };
+  }, [user?.uid]);
+
+  function quitarDeActivas(pin) {
+    quitarSala(user?.uid, pin);
+    setSalasActivas(prev => prev.filter(s => s.pin !== pin));
+  }
 
   function handleEliminar(key) {
     setConfirmDeleteKey(key);
@@ -125,6 +154,48 @@ export default function TeacherDashboard() {
             Crear Juego con IA
           </div>
         </button>
+
+        {/* Salas activas (guardadas para más tarde) */}
+        {salasActivas.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden mb-10">
+            <div className="px-8 py-6 border-b border-mist flex items-center justify-between">
+              <h2 className="font-black text-xl">Salas activas</h2>
+              <span className="text-sm font-bold text-ink/40">
+                {salasActivas.length} guardada{salasActivas.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="divide-y divide-mist/50">
+              {salasActivas.map((s) => (
+                <div key={s.pin} className="px-8 py-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-5 min-w-0">
+                    <span className="font-black text-2xl text-kahootBlue tracking-wider shrink-0">{s.pin}</span>
+                    <div className="min-w-0">
+                      {s.tema && <div className="font-black text-base text-ink truncate">{s.tema}</div>}
+                      <div className="font-bold text-xs text-ink/40 capitalize">
+                        {(s.estado || '').replace(/_/g, ' ') || 'Guardada'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => navigate(`/docente/sesion/${s.pin}`)}
+                      className="btn-primary bg-kahootGreen text-white"
+                    >
+                      Abrir sala
+                    </button>
+                    <button
+                      onClick={() => quitarDeActivas(s.pin)}
+                      title="Quitar de la lista (no borra la sala)"
+                      className="p-2 text-ink/30 hover:text-deny hover:bg-deny/10 rounded-xl transition-all"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Historial de sesiones */}
         <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden">

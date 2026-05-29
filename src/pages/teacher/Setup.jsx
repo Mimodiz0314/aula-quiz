@@ -16,7 +16,19 @@ export default function Setup({ onCreated }) {
   const [textoBase, setTextoBase] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [nivel, setNivel] = useState('bachillerato');
+  const [encabezado, setEncabezado] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('aula_encabezado')) || {}; }
+    catch { return {}; }
+  });
   const [contadores, setContadores] = useState(CONTADORES_INICIAL);
+
+  function setEncabezadoCampo(campo, val) {
+    setEncabezado(prev => {
+      const next = { ...prev, [campo]: val };
+      try { localStorage.setItem('aula_encabezado', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
   const [paso, setPaso] = useState(location.state?.actividades ? 'revisando' : 'idle');
@@ -99,6 +111,7 @@ export default function Setup({ onCreated }) {
         )}
         <ReviewActivities
           initialActividades={actividades}
+          tema={tema}
           onConfirm={handleConfirmar}
           onCancel={() => { setPaso('idle'); setError(null); }}
         />
@@ -281,6 +294,32 @@ La ley de Ohm establece la relación entre...`}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Datos para la guía impresa (opcional, se recuerdan) */}
+        <div className="mb-10">
+          <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-3 block">
+            Datos para la guía impresa <span className="text-ink/30 normal-case tracking-normal">(opcional)</span>
+          </label>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <input
+              className="field"
+              value={encabezado.institucion || ''}
+              onChange={e => setEncabezadoCampo('institucion', e.target.value)}
+              placeholder="Institución educativa"
+              disabled={cargando}
+            />
+            <input
+              className="field"
+              value={encabezado.docente || ''}
+              onChange={e => setEncabezadoCampo('docente', e.target.value)}
+              placeholder="Nombre del docente"
+              disabled={cargando}
+            />
+          </div>
+          <p className="text-xs text-ink/40 font-bold mt-1.5">
+            Aparecerán en el encabezado del PDF. Podrás editarlos también antes de imprimir.
+          </p>
         </div>
 
         {/* 10 contadores */}

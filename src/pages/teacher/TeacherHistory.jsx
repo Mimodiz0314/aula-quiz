@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { obtenerHistorialDocente, ESTADOS } from '../../services/sessionService.js';
+import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 
 export default function TeacherHistory({ onClose }) {
   const [historial, setHistorial] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [imprimir, setImprimir] = useState(null); // sesión seleccionada para imprimir
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,15 +62,33 @@ export default function TeacherHistory({ onClose }) {
                   {sesion.preguntas?.length || 0} preguntas
                 </div>
               </div>
-              <button
-                onClick={() => navigate(`/docente/sesion/${sesion.pin}`)}
-                className="btn-primary w-full bg-kahootBlue opacity-90 group-hover:opacity-100"
-              >
-                Abrir Sala
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate(`/docente/sesion/${sesion.pin}`)}
+                  className="btn-primary flex-1 bg-kahootBlue opacity-90 group-hover:opacity-100"
+                >
+                  Abrir Sala
+                </button>
+                <button
+                  onClick={() => setImprimir(sesion)}
+                  disabled={!sesion.preguntas?.length}
+                  className="btn-secondary shrink-0 disabled:opacity-40"
+                  title="Imprimir guía / PDF"
+                >
+                  🖨️
+                </button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {imprimir && (
+        <WorksheetPrint
+          actividades={imprimir.preguntas || []}
+          tema={imprimir.tema || ''}
+          onClose={() => setImprimir(null)}
+        />
       )}
     </div>
   );

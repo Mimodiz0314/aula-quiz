@@ -36,12 +36,29 @@
         "estudiantes": {
           ".read": true,
           "$studentId": {
-            ".write": "auth != null",
+            ".write": "auth.token.email != null || (auth != null && !data.exists() && newData.child('uid').val() === auth.uid)",
             "respuestas_registradas": {
-              ".write": "auth != null && (data.parent().child('uid').val() == auth.uid || auth.token.email != null)"
+              ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || auth.token.email != null)"
+            },
+            "tiempos_respuesta": {
+              ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || auth.token.email != null)"
+            },
+            "conectado": {
+              ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || auth.token.email != null)"
+            },
+            "uid": {
+              ".write": "auth.token.email != null || (auth != null && newData.val() === auth.uid)"
             }
           }
         }
+      }
+    },
+    "claves": {
+      ".read": false,
+      ".write": false,
+      "$pin": {
+        ".read": "auth != null && auth.token.email != null",
+        ".write": "auth != null && auth.token.email != null"
       }
     },
     "banco_preguntas": {

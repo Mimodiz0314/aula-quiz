@@ -39,6 +39,8 @@ import { signInAnonymously } from 'firebase/auth';
 import { db, auth } from '../firebase/config.js';
 import { generatePin } from '../utils/pin.js';
 import { evaluarEstudiante } from '../utils/grading.js';
+import { calcularJuego, calcularPuestos } from '../utils/scoring.js';
+import { separarLista, fusionarLista } from '../utils/clave.js';
 
 function getEffectiveUid() {
   try {
@@ -72,10 +74,27 @@ export async function crearSesion(preguntas, tema = '') {
   const docenteUid = getEffectiveUid();
   if (!docenteUid) throw new Error('Debes estar autenticado para crear una sesión.');
 
+  // Separamos las respuestas correctas (clave) de los tipos escalares para no
+  // exponerlas en /sesiones (que el estudiante lee completo). Las públicas van
+  // a /sesiones/{pin}/preguntas; las claves a /claves/{pin}.
+  const { publicas, claves } = separarLista(preguntas);
+
   for (let intento = 0; intento < 5; intento++) {
     const pin = generatePin();
     const snapshot = await get(ref(db, `sesiones/${pin}`));
     if (snapshot.exists()) continue;
+
+    // Intentamos guardar las claves aparte (requiere las reglas de /claves
+    // desplegadas). Si fallan (p. ej. reglas aún sin desplegar), degradamos a
+    // modo compatible: las respuestas se quedan dentro de /sesiones como antes,
+    // para no romper la creación. Se auto-corrige al desplegar las reglas.
+    let clavesOk = false;
+    try {
+      await set(ref(db, `claves/${pin}`), claves);
+      clavesOk = true;
+    } catch (e) {
+      console.warn('No se pudieron guardar las claves aparte (¿reglas de /claves sin desplegar?). Modo compatible:', e);
+    }
 
     await set(ref(db, `sesiones/${pin}`), {
       creada_en: serverTimestamp(),
@@ -84,13 +103,30 @@ export async function crearSesion(preguntas, tema = '') {
       pregunta_idx: -1,
       pregunta_inicio_ts: null,
       pregunta_duracion: 0, // 0 = Sin límite de tiempo
-      preguntas,
+      // Con claves guardadas → públicas (sin respuestas). Sin claves → completas.
+      preguntas: clavesOk ? publicas : preguntas,
       tema,
       estudiantes: {},
     });
     return pin;
   }
   throw new Error('No se pudo asignar un PIN único, intenta de nuevo.');
+}
+
+/** Devuelve los datos de una sesión activa, o null si ya no existe. */
+export async function obtenerSesion(pin) {
+  const snap = await get(ref(db, `sesiones/${pin}`));
+  return snap.exists() ? snap.val() : null;
+}
+
+/**
+ * Devuelve las claves (respuestas correctas) de una sesión, o null si no
+ * existen (sesión vieja sin /claves). Solo lo puede leer el docente por reglas.
+ * Puede ser un array o un objeto {idx: clave} según cómo lo serialice RTDB.
+ */
+export async function obtenerClaves(pin) {
+  const snap = await get(ref(db, `claves/${pin}`));
+  return snap.exists() ? snap.val() : null;
 }
 
 /** Cambia la duración de cada pregunta antes de iniciar. */
@@ -123,14 +159,49 @@ export async function revelarRespuesta(pin) {
   const snap = await get(ref(db, `sesiones/${pin}`));
   if (!snap.exists()) return;
   const sesion = snap.val();
-  const preguntas = sesion.preguntas || [];
+  // Fusionamos públicas + claves para tener las actividades COMPLETAS y poder
+  // calificar. El docente sí puede leer /claves por reglas.
+  const claves = await obtenerClaves(pin);
+  const preguntas = fusionarLista(sesion.preguntas || [], claves);
   const estudiantes = sesion.estudiantes || {};
+  const duracion = sesion.pregunta_duracion || 0;
+  const hastaIdx = sesion.pregunta_idx ?? -1;
+
+  // Ranking ANTES de recalcular (según puntos previos), para animar el delta ▲▼.
+  // Si nadie tenía puntos todavía (primera revelación), no hay movimiento real.
+  const habiaPuntos = Object.values(estudiantes).some((e) => (e.puntos_juego || 0) > 0);
+  const puestosPrevios = calcularPuestos(estudiantes);
 
   const updates = { estado_actual: ESTADOS.RESPUESTA_REVELADA };
+  // Publicamos la respuesta de la pregunta ACTUAL en /sesiones para que el
+  // estudiante vea SOLO la respuesta de la pregunta ya revelada (lectura pública).
+  updates.revelacion = {
+    idx: hastaIdx,
+    clave: (claves && hastaIdx >= 0 ? claves[hastaIdx] : null) || {},
+  };
+  const nuevosPuntos = {};
   Object.entries(estudiantes).forEach(([id, est]) => {
     const { nota } = evaluarEstudiante(est, preguntas);
     updates[`estudiantes/${id}/nota_acumulada`] = nota;
+
+    // Puntaje de juego paralelo (velocidad + racha). No afecta la nota.
+    const { puntos, racha } = calcularJuego(est, preguntas, duracion, hastaIdx);
+    updates[`estudiantes/${id}/puntos_juego`] = puntos;
+    updates[`estudiantes/${id}/racha`] = racha;
+    nuevosPuntos[id] = puntos;
   });
+
+  // Ranking DESPUÉS (con los nuevos puntos), nota como desempate.
+  const idsOrdenados = Object.keys(estudiantes).sort((a, b) => {
+    const diff = (nuevosPuntos[b] || 0) - (nuevosPuntos[a] || 0);
+    if (diff !== 0) return diff;
+    return (estudiantes[b].nota_acumulada || 0) - (estudiantes[a].nota_acumulada || 0);
+  });
+  idsOrdenados.forEach((id, i) => {
+    updates[`estudiantes/${id}/puesto`] = i + 1;
+    updates[`estudiantes/${id}/puesto_previo`] = habiaPuntos ? (puestosPrevios[id] || (i + 1)) : (i + 1);
+  });
+
   await update(ref(db, `sesiones/${pin}`), updates);
 }
 
@@ -170,7 +241,10 @@ export async function cerrarSesion(pin) {
     const sesion = snap.val();
     const docenteUid = sesion.docente_uid || getEffectiveUid();
     if (docenteUid) {
-      const preguntas = sesion.preguntas || [];
+      // Fusionamos públicas + claves: el historial guarda el cuestionario
+      // COMPLETO (con respuestas) para reutilizar/imprimir como antes.
+      const claves = await obtenerClaves(pin);
+      const preguntas = fusionarLista(sesion.preguntas || [], claves);
       const estudiantes = sesion.estudiantes || {};
 
     // Calcular nota final de cada estudiante
@@ -206,8 +280,9 @@ export async function cerrarSesion(pin) {
     }
   }
 
-  // 2. Borrar la sesión activa
+  // 2. Borrar la sesión activa y sus claves
   await set(ref(db, `sesiones/${pin}`), null);
+  await set(ref(db, `claves/${pin}`), null);
 }
 
 /** Elimina un registro de historial del docente actual */
@@ -295,13 +370,15 @@ export async function registrarEstudiante(pin, nombre, grado) {
 
   const newRef = push(estRef);
   const studentId = newRef.key;
+  // Los campos calculados (nota_acumulada, puntos_juego, racha, puesto) NO se
+  // inicializan aquí: los escribe el docente al revelar (revelarRespuesta), que
+  // es el único autorizado por las reglas. La UI ya tolera su ausencia (|| 0).
   await set(newRef, {
     uid,
     nombre,
     grado,
     conectado: true,
     respuestas_registradas: {},
-    nota_acumulada: 0,
     unido_en: serverTimestamp(),
   });
 
@@ -341,6 +418,22 @@ export async function registrarRespuesta(pin, studentId, preguntaIdx, opcionIdx)
   // 2. Usamos set() en el índice exacto de la pregunta para evitar cualquier problema de permisos con transacciones
   const respRef = ref(db, `sesiones/${pin}/estudiantes/${studentId}/respuestas_registradas/${preguntaIdx}`);
   await set(respRef, opcionIdx);
+
+  // 3. Registrar el tiempo de respuesta (ms desde que inició la pregunta) para
+  // el puntaje de velocidad del leaderboard. Calibramos el reloj local con el
+  // offset del servidor. No bloquea ni afecta la nota.
+  try {
+    const inicio = sesion.pregunta_inicio_ts;
+    if (inicio) {
+      const offsetSnap = await get(ref(db, '.info/serverTimeOffset'));
+      const offset = offsetSnap.val() || 0;
+      const tMs = Math.max(0, Date.now() + offset - inicio);
+      await set(ref(db, `sesiones/${pin}/estudiantes/${studentId}/tiempos_respuesta/${preguntaIdx}`), tMs);
+    }
+  } catch (e) {
+    console.warn('No se pudo registrar el tiempo de respuesta:', e);
+  }
+
   return true;
 }
 
