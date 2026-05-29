@@ -304,6 +304,8 @@ const DESC_DIFICULTAD = {
   'Avanzado': 'Profundidad AVANZADA (evaluar y crear): juzgar, argumentar, inferir y resolver problemas de varios pasos. Distractores muy plausibles que exijan discriminar finamente.',
 };
 
+const GRADOS_TEMPRANOS = ['Preescolar', '1°', '2°'];
+
 function construirGuiaNivel(nivel, grado, dificultad) {
   const partes = [];
   if (grado) {
@@ -312,6 +314,9 @@ function construirGuiaNivel(nivel, grado, dificultad) {
   }
   if (dificultad && DESC_DIFICULTAD[dificultad]) {
     partes.push(DESC_DIFICULTAD[dificultad]);
+  }
+  if (GRADOS_TEMPRANOS.includes(grado)) {
+    partes.push('CRÍTICO — LECTORES INICIALES: estos estudiantes AÚN NO LEEN BIEN. Usa EMOJIS o pictogramas en los enunciados y SOBRE TODO en las opciones (idealmente cada opción es un emoji grande acompañado de UNA sola palabra muy corta, p. ej. "🐶 Perro"). Texto mínimo, palabras cortas y de uso cotidiano, una sola idea por pregunta. Usa conceptos concretos y visuales (animales 🐶🐱, frutas 🍎🍌, colores, números, formas ⭐🔺). Evita por completo los pasajes de lectura largos y el vocabulario abstracto.');
   }
   if (partes.length === 0) return '';
   return `\n\n🎯 ADAPTACIÓN AL NIVEL DEL ESTUDIANTE (OBLIGATORIO):\n${partes.map((p) => `- ${p}`).join('\n')}\n- Ajusta el vocabulario, la longitud y complejidad del enunciado, el número de pasos y la sutileza de los distractores a este perfil. No excedas ni subestimes el nivel cognitivo indicado.`;

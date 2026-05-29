@@ -9,6 +9,28 @@ const Circle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-8
 const Square = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>;
 const SHAPES = [Triangle, Diamond, Circle, Square];
 const OPTION_COLORS = ['option-red', 'option-blue', 'option-yellow', 'option-green'];
+
+// Lectura en voz alta (accesibilidad / lectores iniciales). Usa la voz del
+// navegador (gratis). Construye el texto a leer según el tipo de actividad.
+function textoLeible(actividad) {
+  if (!actividad) return '';
+  const partes = [];
+  if (actividad.pasaje) partes.push(actividad.pasaje);
+  partes.push(actividad.pregunta || actividad.enunciado || actividad.instruccion || actividad.oracion || '');
+  if (Array.isArray(actividad.opciones)) partes.push('Opciones: ' + actividad.opciones.join('. '));
+  return partes.filter(Boolean).join('. ');
+}
+
+function hablar(texto) {
+  try {
+    if (typeof window === 'undefined' || !window.speechSynthesis || !texto) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'es-CO';
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  } catch { /* navegador sin soporte: se ignora */ }
+}
 const CATEGORY_COLORS = ['bg-kahootBlue text-white', 'bg-kahootGreen text-white'];
 const CATEGORY_BORDERS = ['border-kahootBlue', 'border-kahootGreen'];
 
@@ -46,12 +68,22 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
     <main className="min-h-screen flex flex-col p-4 md:p-8 bg-gameBg">
       {/* Header compartido */}
       <header className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => window.location.href = '/'}
-          className="bg-white/80 backdrop-blur text-ink px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-white transition-colors"
-        >
-          ⌂ Inicio
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.location.href = '/'}
+            className="bg-white/80 backdrop-blur text-ink px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-white transition-colors"
+          >
+            ⌂ Inicio
+          </button>
+          <button
+            onClick={() => hablar(textoLeible(actividad))}
+            className="bg-white/80 backdrop-blur text-ink w-10 h-10 rounded-lg font-bold text-lg shadow-sm hover:bg-white transition-colors flex items-center justify-center"
+            aria-label="Leer en voz alta"
+            title="Leer en voz alta"
+          >
+            🔊
+          </button>
+        </div>
         <div className="font-bold text-sm tracking-widest uppercase text-ink/50 bg-black/5 px-4 py-2 rounded-full">
           {idx + 1} de {total}
         </div>

@@ -14,6 +14,9 @@ const GRADOS = {
   universidad: ['Semestres 1–3', 'Semestres 4–6', 'Semestres 7+'],
 };
 const DIFICULTADES = ['Básico', 'Intermedio', 'Avanzado'];
+// Grados que aún no leen bien → se desaconsejan los tipos muy textuales.
+const GRADOS_TEMPRANOS = ['Preescolar', '1°', '2°'];
+const TIPOS_TEXTUALES = ['detective_texto', 'palabras_perdidas'];
 
 export default function Setup({ onCreated }) {
   const location = useLocation();
@@ -45,6 +48,7 @@ export default function Setup({ onCreated }) {
   const [actividades, setActividades] = useState(location.state?.actividades || []);
 
   const total = Object.values(contadores).reduce((s, v) => s + v, 0);
+  const esGradoTemprano = GRADOS_TEMPRANOS.includes(grado);
 
   function ajustar(tipo, delta) {
     setContadores(prev => ({
@@ -403,6 +407,12 @@ La ley de Ohm establece la relación entre...`}
             </span>
           </div>
 
+          {esGradoTemprano && (
+            <div className="bg-kahootYellow/15 border-l-4 border-kahootYellow p-3 rounded-r-lg text-sm font-bold text-ink/70 mb-4">
+              👶 Para {grado}, los niños aún no leen bien: prefiere actividades visuales. La IA usará emojis y poco texto, y hay lectura en voz alta. Los tipos con mucho texto aparecen marcados como poco ideales.
+            </div>
+          )}
+
           <div className="grid sm:grid-cols-2 gap-3">
             {TIPOS_LISTA.map(({ key, label, emoji, desc, colorBorder }) => (
               <ContadorTipo
@@ -415,6 +425,7 @@ La ley de Ohm establece la relación entre...`}
                 onMinus={() => ajustar(key, -1)}
                 onPlus={() => ajustar(key, 1)}
                 disabled={cargando}
+                noRecomendado={esGradoTemprano && TIPOS_TEXTUALES.includes(key)}
               />
             ))}
           </div>
@@ -457,17 +468,19 @@ La ley de Ohm establece la relación entre...`}
 // ---------------------------------------------------------------------------
 // Contador individual por tipo
 // ---------------------------------------------------------------------------
-function ContadorTipo({ label, emoji, desc, colorBorder, value, onMinus, onPlus, disabled }) {
+function ContadorTipo({ label, emoji, desc, colorBorder, value, onMinus, onPlus, disabled, noRecomendado = false }) {
   const activo = value > 0;
   return (
     <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
-      activo ? `${colorBorder} bg-white shadow-sm` : 'border-mist bg-white'
+      noRecomendado ? 'border-kahootYellow/60 bg-kahootYellow/5' : activo ? `${colorBorder} bg-white shadow-sm` : 'border-mist bg-white'
     }`}>
       <div className="flex items-center gap-3 min-w-0">
-        <span className="text-2xl shrink-0">{emoji}</span>
+        <span className={`text-2xl shrink-0 ${noRecomendado ? 'opacity-60' : ''}`}>{emoji}</span>
         <div className="min-w-0">
           <div className="font-black text-sm leading-tight truncate">{label}</div>
-          <div className="font-bold text-xs text-ink/40 truncate">{desc}</div>
+          {noRecomendado
+            ? <div className="font-bold text-[11px] text-amber-600 truncate">⚠ Poco ideal: mucho texto para este grado</div>
+            : <div className="font-bold text-xs text-ink/40 truncate">{desc}</div>}
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0 ml-3">
