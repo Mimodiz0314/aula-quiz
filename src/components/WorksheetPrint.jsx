@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { deterministicShuffle } from '../utils/shuffle.js';
+import { ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../utils/clave.js';
 
 const LETRAS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const ENCABEZADO_KEY = 'aula_encabezado'; // institución + docente recordados
@@ -322,8 +323,10 @@ function CazaIntruso({ actividad, esClave }) {
 function Orden({ actividad, esClave, numero, tipo }) {
   const items = tipo === 'rompecabezas_ideas' ? actividad.fragmentos : actividad.pasos;
   const seed = `worksheet-${numero}-${tipo}`;
+  // Clave: orden correcto (reordenado con la clave si el contenido viene barajado).
+  const correctos = ordenarPorClave(items, actividad.orden);
   const mostrados = esClave
-    ? items.map((item, origIdx) => ({ item, origIdx }))
+    ? correctos.map((item, origIdx) => ({ item, origIdx }))
     : deterministicShuffle(items, seed);
 
   return (
@@ -360,7 +363,10 @@ function Parejas({ actividad, esClave, numero }) {
       <div className="grid grid-cols-2 gap-x-8 ml-1 text-[14px]">
         <ul className="space-y-1.5">
           {actividad.pares.map((par, i) => {
-            const letraCorrecta = LETRAS[derechas.findIndex(d => d.origIdx === i)];
+            // La derecha correcta para la izquierda i está en el índice mapeo[i]
+            // (o i, si no hay clave). Buscamos su letra en la columna barajada.
+            const correctaIdx = Array.isArray(actividad.mapeo) ? actividad.mapeo[i] : i;
+            const letraCorrecta = LETRAS[derechas.findIndex(d => d.origIdx === correctaIdx)];
             return (
               <li key={i}>
                 <span className="inline-block w-7 border-b border-gray-500 text-center font-black mr-2 align-middle">
@@ -410,7 +416,7 @@ function Clasificador({ actividad, esClave }) {
           {cats.map((cat, ci) => (
             <div key={ci} className="border border-gray-400 rounded-md p-2">
               <p className="font-black border-b border-gray-300 mb-1 pb-1">{cat.nombre}</p>
-              {(cat.items || []).map((it, ii) => <p key={ii}>· {it}</p>)}
+              {(clasificacionCorrecta(actividad)[ci] || []).map((it, ii) => <p key={ii}>· {it}</p>)}
             </div>
           ))}
         </div>

@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
-import { iniciarSesion, setDuracion, cerrarSesion } from '../../services/sessionService.js';
+import { iniciarSesion, setDuracion, cerrarSesion, obtenerClaves } from '../../services/sessionService.js';
 import { useNavigate } from 'react-router-dom';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 import { guardarSala } from '../../utils/savedRooms.js';
+import { fusionarLista } from '../../utils/clave.js';
 
 export default function Lobby({ pin, sesion }) {
   const navigate = useNavigate();
   const [mostrarConfirm, setMostrarConfirm] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [imprimir, setImprimir] = useState(false);
+  // Claves (respuestas) para que la guía impresa muestre la clave correcta.
+  const [claves, setClaves] = useState(null);
+  useEffect(() => {
+    obtenerClaves(pin).then(setClaves).catch(() => {});
+  }, [pin]);
 
   function handleGuardarYSalir() {
     // La sala sigue viva en Firebase; solo guardamos un puntero para reabrirla.
@@ -82,7 +88,7 @@ export default function Lobby({ pin, sesion }) {
   if (imprimir) {
     return (
       <WorksheetPrint
-        actividades={sesion.preguntas || []}
+        actividades={fusionarLista(sesion.preguntas || [], claves)}
         tema={sesion.tema || ''}
         onClose={() => setImprimir(false)}
       />

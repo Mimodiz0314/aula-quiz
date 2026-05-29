@@ -9,7 +9,7 @@ import {
 import { useServerTimer } from '../../hooks/useServerTimer.js';
 import { useNavigate } from 'react-router-dom';
 import { esAcierto } from '../../utils/grading.js';
-import { fusionarClave } from '../../utils/clave.js';
+import { fusionarClave, ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../../utils/clave.js';
 import { TIPOS } from '../../types/activityTypes.js';
 import Leaderboard from '../../components/Leaderboard.jsx';
 
@@ -363,7 +363,10 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
   }
 
   if (tipo === 'rompecabezas_ideas' || tipo === 'paso_a_paso') {
-    const items = tipo === 'rompecabezas_ideas' ? actividad.fragmentos : actividad.pasos;
+    const items = ordenarPorClave(
+      tipo === 'rompecabezas_ideas' ? actividad.fragmentos : actividad.pasos,
+      actividad.orden
+    );
     return (
       <>
         <h2 className="font-black text-xl mb-4">{actividad.instruccion}</h2>
@@ -390,11 +393,12 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
   }
 
   if (tipo === 'parejas_logicas') {
+    const filas = parejasCorrectas(actividad);
     return (
       <>
         <h2 className="font-black text-xl mb-4">{actividad.instruccion}</h2>
         <div className="space-y-2">
-          {actividad.pares.map((par, i) => (
+          {filas.map((par, i) => (
             <div key={i} className="grid grid-cols-2 gap-3">
               <div className="bg-gameBg rounded-xl p-3 font-bold text-sm">{par.izquierda}</div>
               <div className={`rounded-xl p-3 font-bold text-sm ${esRevelado ? 'bg-kahootGreen/10 text-kahootGreen' : 'bg-gameBg'}`}>
@@ -408,6 +412,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
   }
 
   if (tipo === 'clasificador') {
+    const grupos = clasificacionCorrecta(actividad);
     return (
       <>
         <h2 className="font-black text-xl mb-4">{actividad.instruccion}</h2>
@@ -415,7 +420,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
           {actividad.categorias.map((cat, ci) => (
             <div key={ci} className={`p-4 rounded-2xl ${esRevelado ? 'bg-kahootGreen/10' : 'bg-gameBg'}`}>
               <p className="font-black text-sm mb-2">{cat.nombre}</p>
-              {cat.items.map((item, ii) => (
+              {(grupos[ci] || []).map((item, ii) => (
                 <p key={ii} className="text-sm font-bold text-ink/70 mb-1">{item}</p>
               ))}
             </div>
