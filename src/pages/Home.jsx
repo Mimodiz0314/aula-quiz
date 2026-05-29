@@ -43,6 +43,26 @@ export default function Home() {
           <p className="mt-6 max-w-md text-xl leading-relaxed text-ink/70 font-bold">
             Evaluación interactiva en tiempo real. Compite con tus compañeros, demuestra lo que sabes y diviértete aprendiendo.
           </p>
+
+          {/* Tarjeta de Código QR para móviles */}
+          <div className="mt-12 p-5 bg-white border border-mist/80 rounded-3xl shadow-sm flex items-center gap-5 max-w-md hover:shadow-md transition-shadow">
+            <div className="bg-gameBg p-2.5 rounded-2xl border border-mist/40 shrink-0">
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://aula-quiz.vercel.app/"
+                alt="Código QR Aula!"
+                className="w-24 h-24 object-contain select-none"
+                loading="lazy"
+              />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-ink flex items-center gap-2">
+                ¡Juega en tu celular! 📱
+              </h3>
+              <p className="text-sm font-bold text-ink/50 mt-1 leading-relaxed">
+                Escanea el código QR con la cámara de tu teléfono para ingresar directamente a la sala de juego.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-6 md:pl-12 flex flex-col items-center md:items-end w-full animate-bounce-in" style={{ animationDelay: '100ms' }}>
