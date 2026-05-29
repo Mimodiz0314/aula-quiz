@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { TIPOS, TIPOS_LISTA } from '../types/activityTypes.js';
+import WorksheetPrint from './WorksheetPrint.jsx';
 
 const OPTION_COLORS = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGreen'];
 
-export default function ReviewActivities({ initialActividades, onConfirm, onCancel }) {
+export default function ReviewActivities({ initialActividades, onConfirm, onCancel, tema = '' }) {
   const [actividades, setActividades] = useState(initialActividades);
   const [modalAgregar, setModalAgregar] = useState(false);
+  const [imprimir, setImprimir] = useState(false);
 
   function update(index, nuevoValor) {
     setActividades(prev => {
@@ -37,6 +39,13 @@ export default function ReviewActivities({ initialActividades, onConfirm, onCanc
             Cancelar
           </button>
           <button
+            onClick={() => setImprimir(true)}
+            disabled={actividades.length === 0}
+            className="btn-secondary disabled:opacity-40"
+          >
+            🖨️ Imprimir / PDF
+          </button>
+          <button
             onClick={() => onConfirm(actividades)}
             disabled={actividades.length === 0}
             className="btn-primary bg-kahootGreen disabled:opacity-40"
@@ -45,6 +54,14 @@ export default function ReviewActivities({ initialActividades, onConfirm, onCanc
           </button>
         </div>
       </div>
+
+      {imprimir && (
+        <WorksheetPrint
+          actividades={actividades}
+          tema={tema}
+          onClose={() => setImprimir(false)}
+        />
+      )}
 
       {/* Lista de actividades */}
       <div className="space-y-6">

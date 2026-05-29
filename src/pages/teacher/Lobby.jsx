@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
 import { iniciarSesion, setDuracion, cerrarSesion } from '../../services/sessionService.js';
 import { useNavigate } from 'react-router-dom';
+import WorksheetPrint from '../../components/WorksheetPrint.jsx';
+import { guardarSala } from '../../utils/savedRooms.js';
 
 export default function Lobby({ pin, sesion }) {
   const navigate = useNavigate();
   const [mostrarConfirm, setMostrarConfirm] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [imprimir, setImprimir] = useState(false);
+
+  function handleGuardarYSalir() {
+    // La sala sigue viva en Firebase; solo guardamos un puntero para reabrirla.
+    guardarSala(sesion.docente_uid, { pin, tema: sesion.tema });
+    navigate('/docente');
+  }
   const estudiantes = Object.entries(sesion.estudiantes || {});
   const duracion = sesion.pregunta_duracion ?? 30;
 
@@ -70,6 +79,16 @@ export default function Lobby({ pin, sesion }) {
     }
   }
 
+  if (imprimir) {
+    return (
+      <WorksheetPrint
+        actividades={sesion.preguntas || []}
+        tema={sesion.tema || ''}
+        onClose={() => setImprimir(false)}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen p-6 md:p-12 bg-gameBg flex flex-col">
       <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm">
@@ -84,7 +103,13 @@ export default function Lobby({ pin, sesion }) {
             Aula<span className="text-kahootRed">!</span>
           </div>
         </div>
-        <button onClick={handleCerrar} className="btn-ghost text-deny hover:bg-deny/10">Cerrar sala</button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setImprimir(true)} className="btn-ghost">🖨️ Imprimir guía</button>
+          <button onClick={handleGuardarYSalir} className="btn-ghost text-kahootBlue hover:bg-kahootBlue/10">
+            💾 Guardar y volver a Mi Panel
+          </button>
+          <button onClick={handleCerrar} className="btn-ghost text-deny hover:bg-deny/10">Cerrar sala</button>
+        </div>
       </header>
 
       <div className="flex-1 grid lg:grid-cols-[1fr_300px] gap-8">

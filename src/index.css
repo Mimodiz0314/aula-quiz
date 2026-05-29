@@ -163,3 +163,75 @@ body {
   }
 }
 
+/* --- Hoja de trabajo imprimible (guía para el estudiante / clave docente) --- */
+@page {
+  size: A4;
+  margin: 1.8cm;
+}
+
+.worksheet-page {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #111;
+}
+
+.worksheet-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Campos editables del encabezado: borde sutil en pantalla. */
+.worksheet-page .ws-field {
+  border-bottom: 1px solid #9ca3af;
+  padding: 1px 4px;
+}
+.worksheet-page .ws-field:focus {
+  outline: none;
+  border-bottom-color: #2563eb;
+  background: #f1f5f9;
+}
+.worksheet-page .ws-title {
+  border-bottom: 1px dashed transparent;
+  padding: 1px 4px;
+}
+.worksheet-page .ws-title:focus {
+  outline: none;
+  border-bottom-color: #2563eb;
+}
+.worksheet-page .ws-notes {
+  border: 1px dashed #cbd5e1;
+  background: #fafafa;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.worksheet-page .ws-notes:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+@media print {
+  /* La guía se monta como hermana de #root (portal). Al imprimir ocultamos
+     #root POR COMPLETO (display:none, sin dejar espacio → sin hojas en blanco)
+     y dejamos fluir solo la guía. */
+  body.printing-worksheet #root {
+    display: none !important;
+  }
+  body.printing-worksheet .worksheet-root {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  body.printing-worksheet .no-print {
+    display: none !important;
+  }
+  /* Campos del encabezado: línea limpia / sin borde al imprimir. */
+  .worksheet-page .ws-field {
+    border-bottom: 1px solid #999 !important;
+    background: transparent !important;
+  }
+  .worksheet-page .ws-title {
+    border: none !important;
+    background: transparent !important;
+  }
+}
+

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { esAcierto } from '../../utils/grading.js';
+import { fusionarClave } from '../../utils/clave.js';
 
 function parseJSON(val) {
   if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } }
@@ -8,7 +9,13 @@ function parseJSON(val) {
 
 export default function Reveal({ sesion, yo }) {
   const idx = sesion.pregunta_idx;
-  const actividad = sesion.preguntas[idx];
+  // La respuesta correcta no está en sesion.preguntas (la ocultamos por seguridad).
+  // Al revelar, el docente publica sesion.revelacion = { idx, clave } SOLO de la
+  // pregunta actual. Reconstruimos la actividad completa fusionando ambas.
+  // Retrocompat: sesiones viejas no traen revelacion pero sí la respuesta dentro
+  // de preguntas[idx]; fusionarClave(null) devuelve la pública intacta.
+  const claveActual = sesion.revelacion?.idx === idx ? sesion.revelacion.clave : null;
+  const actividad = fusionarClave(sesion.preguntas[idx], claveActual);
   const miRespuesta = yo.respuestas_registradas?.[idx];
   const acerto = miRespuesta !== undefined && esAcierto(actividad, miRespuesta);
   const sinRespuesta = miRespuesta === undefined;
@@ -60,8 +67,49 @@ export default function Reveal({ sesion, yo }) {
 
         {/* Respuesta correcta (varía por tipo) */}
         <CorrectaDisplay actividad={actividad} sinRespuesta={sinRespuesta} />
+
+        {/* Puesto y puntaje de juego (si la sesión los usa) */}
+        <PuntajeBanner yo={yo} sinRespuesta={sinRespuesta} />
       </div>
     </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Banner con el puesto en la tabla, los puntos y la racha del estudiante.
+// ---------------------------------------------------------------------------
+function PuntajeBanner({ yo, sinRespuesta }) {
+  if (yo?.puntos_juego === undefined || yo?.puntos_juego === null) return null;
+
+  const puesto = yo.puesto;
+  const delta = (yo.puesto_previo && puesto) ? yo.puesto_previo - puesto : 0;
+  const racha = yo.racha || 0;
+
+  const caja = `mt-6 w-full rounded-2xl p-4 flex items-center justify-between ${
+    sinRespuesta ? 'bg-white text-ink' : 'bg-black/20 text-white'
+  }`;
+
+  return (
+    <div className={caja}>
+      <div className="text-left">
+        <p className={`text-xs font-bold uppercase tracking-wider ${sinRespuesta ? 'text-ink/50' : 'text-white/60'}`}>
+          Tu puesto
+        </p>
+        <p className="text-3xl font-black tabular-nums flex items-center gap-2">
+          #{puesto || '-'}
+          {delta > 0 && <span className="text-kahootGreen text-base">▲{delta}</span>}
+          {delta < 0 && <span className="text-kahootRed text-base">▼{-delta}</span>}
+        </p>
+      </div>
+      <div className="text-right">
+        <p className={`text-xs font-bold uppercase tracking-wider ${sinRespuesta ? 'text-ink/50' : 'text-white/60'}`}>
+          Puntos {racha >= 2 && <span className="ml-1">🔥{racha}</span>}
+        </p>
+        <p className="text-3xl font-black tabular-nums">
+          {(yo.puntos_juego || 0).toLocaleString('es-CO')}
+        </p>
+      </div>
+    </div>
   );
 }
 

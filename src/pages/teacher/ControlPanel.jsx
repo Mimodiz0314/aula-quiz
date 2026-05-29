@@ -1,14 +1,17 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ESTADOS,
   marcarTiempoAgotado,
   revelarRespuesta,
   siguientePregunta,
+  obtenerClaves,
 } from '../../services/sessionService.js';
 import { useServerTimer } from '../../hooks/useServerTimer.js';
 import { useNavigate } from 'react-router-dom';
 import { esAcierto } from '../../utils/grading.js';
+import { fusionarClave } from '../../utils/clave.js';
 import { TIPOS } from '../../types/activityTypes.js';
+import Leaderboard from '../../components/Leaderboard.jsx';
 
 const Triangle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 20H2L12 2Z" /></svg>;
 const Diamond = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 12L12 22L2 12L12 2Z" /></svg>;
@@ -19,10 +22,24 @@ const COLORS = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGr
 
 export default function ControlPanel({ pin, sesion }) {
   const navigate = useNavigate();
+  const [mostrarTabla, setMostrarTabla] = useState(false);
+  // Las respuestas correctas viven en /claves (no en /sesiones). El docente las
+  // lee una vez y las fusiona en memoria para mostrar/calcular stats de aciertos.
+  const [claves, setClaves] = useState(null);
+  useEffect(() => {
+    let activo = true;
+    obtenerClaves(pin)
+      .then((c) => { if (activo) setClaves(c); })
+      .catch((e) => console.warn('No se pudieron cargar las claves:', e));
+    return () => { activo = false; };
+  }, [pin]);
+
   const preguntas = sesion.preguntas || [];
   const idx = sesion.pregunta_idx ?? 0;
   const total = preguntas.length;
-  const actividad = preguntas[idx];
+  // Actividad fusionada (pública + clave). Si claves aún no cargó, usamos la
+  // pública para no romper el render (las stats de aciertos se actualizan al cargar).
+  const actividad = fusionarClave(preguntas[idx], claves?.[idx]);
 
   const estudiantes = useMemo(
     () => Object.entries(sesion.estudiantes || {}),
@@ -170,12 +187,52 @@ export default function ControlPanel({ pin, sesion }) {
             </button>
           )}
           {esRevelado && (
+            <button onClick={() => setMostrarTabla(true)} className="btn-secondary">
+              🏆 Tabla de posiciones
+            </button>
+          )}
+          {esRevelado && (
             <button onClick={() => siguientePregunta(pin)} className="btn-primary bg-kahootGreen">
               {idx + 1 >= total ? 'Ver podio final' : 'Siguiente actividad'}
             </button>
           )}
         </div>
       </footer>
+
+      {/* Overlay de tabla de posiciones (modo proyector) */}
+      {mostrarTabla && (
+        <div
+          className="fixed inset-0 bg-[#46178f] z-50 flex flex-col items-center justify-center p-6 md:p-12 animate-fade-in"
+          onClick={() => setMostrarTabla(false)}
+        >
+          <div className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Botón de volver, claro y arriba a la izquierda */}
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={() => setMostrarTabla(false)}
+                className="bg-white text-[#46178f] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-white/90 transition-all shadow-md flex items-center gap-2"
+              >
+                ← Volver al panel
+              </button>
+              <h2 className="font-black text-3xl md:text-5xl text-white flex items-center gap-3">
+                🏆 Posiciones
+              </h2>
+            </div>
+
+            <Leaderboard estudiantes={sesion.estudiantes || {}} top={5} />
+
+            {/* Avanzar el juego sin tener que cerrar primero la tabla */}
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => { setMostrarTabla(false); siguientePregunta(pin); }}
+                className="btn-primary bg-kahootGreen px-10 shadow-md"
+              >
+                {idx + 1 >= total ? 'Ver podio final →' : 'Siguiente actividad →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,13 +1,28 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { evaluarEstudiante, calcularNota } from '../../utils/grading.js';
-import { cerrarSesion } from '../../services/sessionService.js';
+import { cerrarSesion, obtenerClaves } from '../../services/sessionService.js';
+import { fusionarLista } from '../../utils/clave.js';
 
 export default function Dashboard({ pin, sesion }) {
   const navigate = useNavigate();
   const [mostrarConfirm, setMostrarConfirm] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
-  const preguntas = sesion.preguntas || [];
+  // Las respuestas correctas viven en /claves. Las cargamos para fusionarlas y
+  // que la calificación final (aciertos/notas) sea correcta.
+  const [claves, setClaves] = useState(null);
+  useEffect(() => {
+    let activo = true;
+    obtenerClaves(pin)
+      .then((c) => { if (activo) setClaves(c); })
+      .catch((e) => console.warn('No se pudieron cargar las claves:', e));
+    return () => { activo = false; };
+  }, [pin]);
+
+  const preguntas = useMemo(
+    () => fusionarLista(sesion.preguntas || [], claves),
+    [sesion.preguntas, claves]
+  );
   const total = preguntas.length;
 
   const filas = useMemo(() => {
@@ -19,8 +34,11 @@ export default function Dashboard({ pin, sesion }) {
         grado: est.grado,
         aciertos,
         nota,
+        puntos: est.puntos_juego || 0,
+        racha: est.racha || 0,
       };
     });
+    // La tabla y las exportaciones se ordenan por nota (reporte académico).
     return ests.sort((a, b) => b.nota - a.nota);
   }, [sesion.estudiantes, preguntas]);
 
@@ -174,8 +192,11 @@ export default function Dashboard({ pin, sesion }) {
     URL.revokeObjectURL(url);
   }
 
-  const podio = filas.slice(0, 3);
-  const resto = filas.slice(3);
+  // El podio celebra el ranking del juego (puntos), igual que el leaderboard en vivo.
+  const tienePuntos = filas.some((f) => f.puntos > 0);
+  const podio = [...filas]
+    .sort((a, b) => (b.puntos - a.puntos) || (b.nota - a.nota))
+    .slice(0, 3);
 
   return (
     <main className="min-h-screen p-6 md:p-12 flex flex-col bg-gameBg">
@@ -207,7 +228,9 @@ export default function Dashboard({ pin, sesion }) {
             {podio[1] && (
               <div className="flex flex-col items-center flex-1 animate-slide-up" style={{ animationDelay: '200ms' }}>
                 <p className="font-bold text-xl mb-2 text-center break-words w-full px-2">{podio[1].nombre}</p>
-                <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4">{podio[1].nota.toFixed(1)}</div>
+                <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4">
+                  {tienePuntos ? `${podio[1].puntos.toLocaleString('es-CO')} pts` : podio[1].nota.toFixed(1)}
+                </div>
                 <div className="bg-white/10 w-full h-32 rounded-t-lg border-t-4 border-slate-300 flex items-start justify-center pt-4 shadow-inner">
                   <span className="font-black text-4xl text-slate-300">2</span>
                 </div>
@@ -218,7 +241,9 @@ export default function Dashboard({ pin, sesion }) {
             <div className="flex flex-col items-center flex-1 animate-slide-up z-10">
               <div className="text-5xl mb-2 animate-bounce">👑</div>
               <p className="font-black text-2xl mb-2 text-center break-words w-full px-2">{podio[0].nombre}</p>
-              <div className="bg-kahootYellow px-4 py-1 rounded-full text-ink font-black mb-4 shadow-md">{podio[0].nota.toFixed(1)}</div>
+              <div className="bg-kahootYellow px-4 py-1 rounded-full text-ink font-black mb-4 shadow-md">
+                {tienePuntos ? `${podio[0].puntos.toLocaleString('es-CO')} pts` : podio[0].nota.toFixed(1)}
+              </div>
               <div className="bg-kahootYellow/20 w-full h-48 rounded-t-lg border-t-4 border-kahootYellow flex items-start justify-center pt-4 shadow-inner backdrop-blur-sm">
                 <span className="font-black text-5xl text-kahootYellow">1</span>
               </div>
@@ -228,7 +253,9 @@ export default function Dashboard({ pin, sesion }) {
             {podio[2] ? (
               <div className="flex flex-col items-center flex-1 animate-slide-up" style={{ animationDelay: '400ms' }}>
                 <p className="font-bold text-xl mb-2 text-center break-words w-full px-2">{podio[2].nombre}</p>
-                <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4">{podio[2].nota.toFixed(1)}</div>
+                <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4">
+                  {tienePuntos ? `${podio[2].puntos.toLocaleString('es-CO')} pts` : podio[2].nota.toFixed(1)}
+                </div>
                 <div className="bg-white/5 w-full h-24 rounded-t-lg border-t-4 border-amber-600 flex items-start justify-center pt-4 shadow-inner">
                   <span className="font-black text-4xl text-amber-600">3</span>
                 </div>
