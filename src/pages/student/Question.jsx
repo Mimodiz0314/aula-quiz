@@ -62,7 +62,21 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
         </div>
       </header>
 
-      {/* Dispatcher por tipo */}
+      {/* Dispatcher por tipo (compartido con la vista previa del docente) */}
+      <ActivityStudentView {...props} />
+    </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dispatcher de la actividad en la vista del estudiante. Se exporta para
+// reutilizarlo en la VISTA PREVIA del docente (mismo aspecto que ve el alumno).
+// ---------------------------------------------------------------------------
+export function ActivityStudentView({ actividad, bloqueado, yaRespondio, miRespuesta, responder, seed }) {
+  if (!actividad) return null;
+  const props = { actividad, bloqueado, yaRespondio, miRespuesta, responder, seed };
+  return (
+    <>
       {actividad.tipo === 'seleccion_clasica' && <SeleccionUI {...props} />}
       {actividad.tipo === 'verdad_mito' && (
         <BinarioUI {...props}
@@ -95,7 +109,7 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
       {actividad.tipo === 'palabras_perdidas'  && <PalabrasPierdidasUI {...props} />}
       {/* Fallback para actividades sin tipo (compatibilidad hacia atrás) */}
       {!actividad.tipo && <SeleccionUI {...props} actividad={{ ...actividad, tipo: 'seleccion_clasica' }} />}
-    </main>
+    </>
   );
 }
 

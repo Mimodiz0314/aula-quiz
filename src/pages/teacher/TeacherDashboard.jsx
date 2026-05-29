@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion } from '../../services/sessionService.js';
 import { listarSalasGuardadas, quitarSala, reemplazarSalas } from '../../utils/savedRooms.js';
+import WorksheetPrint from '../../components/WorksheetPrint.jsx';
+import StudentPreview from '../../components/StudentPreview.jsx';
 
 export default function TeacherDashboard() {
   const { user, userData, logout, cambiarMiPassword } = useAuth();
@@ -11,6 +13,8 @@ export default function TeacherDashboard() {
   const [historial, setHistorial] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(true);
   const [salasActivas, setSalasActivas] = useState([]);
+  const [preview, setPreview] = useState(null);   // sesión a previsualizar (vista estudiante)
+  const [imprimir, setImprimir] = useState(null);  // sesión a imprimir (guía PDF)
   const [modalPassword, setModalPassword] = useState(false);
   const [sesionDetalle, setSesionDetalle] = useState(null); // sesión seleccionada para ver notas
   const [reutilizando, setReutilizando] = useState(false);
@@ -223,6 +227,8 @@ export default function TeacherDashboard() {
                   onDelete={handleEliminar}
                   onEdit={handleEdit}
                   onReuse={handleReuse}
+                  onPreview={() => setPreview(s)}
+                  onPrint={() => setImprimir(s)}
                 />
               ))}
             </div>
@@ -232,7 +238,31 @@ export default function TeacherDashboard() {
 
       {/* Modal: ver notas de una sesión */}
       {sesionDetalle && (
-        <ModalNotas sesion={sesionDetalle} onClose={() => setSesionDetalle(null)} onDelete={handleEliminar} />
+        <ModalNotas
+          sesion={sesionDetalle}
+          onClose={() => setSesionDetalle(null)}
+          onDelete={handleEliminar}
+          onPreview={() => { setPreview(sesionDetalle); setSesionDetalle(null); }}
+          onPrint={() => { setImprimir(sesionDetalle); setSesionDetalle(null); }}
+        />
+      )}
+
+      {/* Vista previa (como la ve el estudiante) */}
+      {preview && (
+        <StudentPreview
+          actividades={preview.preguntas || []}
+          tema={preview.tema || ''}
+          onClose={() => setPreview(null)}
+        />
+      )}
+
+      {/* Guía imprimible / PDF */}
+      {imprimir && (
+        <WorksheetPrint
+          actividades={imprimir.preguntas || []}
+          tema={imprimir.tema || ''}
+          onClose={() => setImprimir(null)}
+        />
       )}
 
       {/* Modal: Cambiar mi contraseña */}
@@ -288,7 +318,7 @@ export default function TeacherDashboard() {
 // ---------------------------------------------------------------------------
 // Fila de sesión en el historial
 // ---------------------------------------------------------------------------
-function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse }) {
+function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onPrint }) {
   const nEstudiantes = sesion.total_estudiantes || 0;
   const promedio = sesion.promedio_grupo;
   const fecha = sesion.cerrada_en
@@ -327,6 +357,26 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse }) {
           </span>
         )}
         <div className="flex items-center gap-1 no-print">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPreview(sesion);
+            }}
+            className="p-1.5 md:p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
+            title="Vista previa (como la ve el estudiante)"
+          >
+            👁️
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrint(sesion);
+            }}
+            className="p-1.5 md:p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
+            title="Imprimir / PDF"
+          >
+            🖨️
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -369,7 +419,7 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse }) {
 // ---------------------------------------------------------------------------
 // Modal: Tabla de notas de una sesión archivada
 // ---------------------------------------------------------------------------
-function ModalNotas({ sesion, onClose, onDelete }) {
+function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
   const navigate = useNavigate();
   const [lanzando, setLanzando] = useState(false);
   const resultados = sesion.resultados || [];
@@ -492,6 +542,18 @@ function ModalNotas({ sesion, onClose, onDelete }) {
             </button>
           </div>
           <div className="flex flex-wrap gap-3">
+            <button
+              onClick={onPreview}
+              className="btn-secondary flex items-center gap-2 text-ink/75 hover:bg-mist/10"
+            >
+              👁️ Vista previa
+            </button>
+            <button
+              onClick={onPrint}
+              className="btn-secondary flex items-center gap-2 text-ink/75 hover:bg-mist/10"
+            >
+              🖨️ Imprimir
+            </button>
             <button
               onClick={exportarCSV}
               className="btn-secondary flex items-center gap-2 text-kahootGreen border-kahootGreen/30 hover:bg-kahootGreen/5"
