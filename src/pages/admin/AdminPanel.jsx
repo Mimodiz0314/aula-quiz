@@ -4,9 +4,11 @@ import { getAuth, createUserWithEmailAndPassword, signOut as authSignOut, sendPa
 import { initializeApp, deleteApp } from 'firebase/app';
 import { db, app } from '../../firebase/config.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdminPanel() {
-  const { userData, logout, user } = useAuth();
+  const { userData, logout, user, impersonate } = useAuth();
+  const navigate = useNavigate();
   const [docentes, setDocentes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState('');
@@ -15,6 +17,11 @@ export default function AdminPanel() {
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [accion, setAccion] = useState({ tipo: null, uid: null });
   const [mensaje, setMensaje] = useState('');
+
+  function handleImpersonate(docente) {
+    impersonate(docente);
+    navigate('/docente');
+  }
 
   const cargarDocentes = useCallback(async () => {
     setCargando(true);
@@ -192,6 +199,14 @@ export default function AdminPanel() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2 justify-end flex-wrap">
+                            {!esAdmin && (
+                              <AccionBtn
+                                onClick={() => handleImpersonate(d)}
+                                color="text-purple-600"
+                              >
+                                Ingresar 👁️
+                              </AccionBtn>
+                            )}
                             {!esAdmin && (
                               <AccionBtn
                                 onClick={() => toggleActivo(d)}

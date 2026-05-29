@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Lobby({ pin, sesion }) {
   const navigate = useNavigate();
+  const [mostrarConfirm, setMostrarConfirm] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
   const estudiantes = Object.entries(sesion.estudiantes || {});
   const duracion = sesion.pregunta_duracion ?? 30;
 
@@ -50,10 +52,22 @@ export default function Lobby({ pin, sesion }) {
     setDuracion(pin, seconds);
   };
 
-  async function handleCerrar() {
-    if (!confirm('¿Cerrar la sesión y borrarla? Los estudiantes serán desconectados.')) return;
-    await cerrarSesion(pin);
-    navigate('/');
+  function handleCerrar() {
+    setMostrarConfirm(true);
+  }
+
+  async function executeCerrar() {
+    setConfirmando(true);
+    try {
+      await cerrarSesion(pin);
+      setMostrarConfirm(false);
+      navigate('/docente');
+    } catch (e) {
+      console.error(e);
+      alert('Error al cerrar la sesión: ' + e.message);
+    } finally {
+      setConfirmando(false);
+    }
   }
 
   return (
@@ -193,6 +207,43 @@ export default function Lobby({ pin, sesion }) {
           </div>
         </section>
       </div>
+
+      {/* Modal de Confirmación Premium */}
+      {mostrarConfirm && (
+        <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col items-center text-center animate-scale-in">
+            <div className="w-16 h-16 bg-kahootRed/10 rounded-full flex items-center justify-center text-3xl mb-6">
+              ⚠️
+            </div>
+            <h3 className="font-black text-2xl mb-3 text-ink">¿Cerrar y borrar sala?</h3>
+            <p className="font-bold text-ink/50 text-sm mb-8 leading-relaxed">
+              Los estudiantes conectados serán desconectados inmediatamente y la sala activa se eliminará.
+            </p>
+            
+            {confirmando ? (
+              <div className="flex flex-col items-center gap-3 py-2 w-full">
+                <div className="w-8 h-8 border-4 border-kahootRed border-t-transparent rounded-full animate-spin" />
+                <span className="font-bold text-sm text-kahootRed">Cerrando sala…</span>
+              </div>
+            ) : (
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setMostrarConfirm(false)}
+                  className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeCerrar}
+                  className="flex-1 btn-primary bg-kahootRed hover:bg-kahootRed/90 py-3 text-white font-black"
+                >
+                  Sí, Cerrar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

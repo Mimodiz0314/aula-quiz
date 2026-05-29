@@ -40,6 +40,19 @@ import { db, auth } from '../firebase/config.js';
 import { generatePin } from '../utils/pin.js';
 import { evaluarEstudiante } from '../utils/grading.js';
 
+function getEffectiveUid() {
+  try {
+    const saved = sessionStorage.getItem('impersonated_teacher');
+    if (saved) {
+      const teacher = JSON.parse(saved);
+      if (teacher && teacher.uid) return teacher.uid;
+    }
+  } catch (e) {
+    console.error('Error parsing impersonated teacher:', e);
+  }
+  return auth.currentUser?.uid;
+}
+
 const ESTADOS = Object.freeze({
   LOBBY: 'lobby',
   PREGUNTA_ACTIVA: 'pregunta_activa',
@@ -56,7 +69,7 @@ export { ESTADOS };
  * si por colisión astronómica el PIN ya existe.
  */
 export async function crearSesion(preguntas, tema = '') {
-  const docenteUid = auth.currentUser?.uid;
+  const docenteUid = getEffectiveUid();
   if (!docenteUid) throw new Error('Debes estar autenticado para crear una sesión.');
 
   for (let intento = 0; intento < 5; intento++) {
@@ -155,7 +168,7 @@ export async function cerrarSesion(pin) {
   const snap = await get(ref(db, `sesiones/${pin}`));
   if (snap.exists()) {
     const sesion = snap.val();
-    const docenteUid = sesion.docente_uid || auth.currentUser?.uid;
+    const docenteUid = sesion.docente_uid || getEffectiveUid();
     if (docenteUid) {
       const preguntas = sesion.preguntas || [];
       const estudiantes = sesion.estudiantes || {};
@@ -197,9 +210,16 @@ export async function cerrarSesion(pin) {
   await set(ref(db, `sesiones/${pin}`), null);
 }
 
+/** Elimina un registro de historial del docente actual */
+export async function eliminarHistorial(key) {
+  const docenteUid = getEffectiveUid();
+  if (!docenteUid) throw new Error('Debes estar autenticado.');
+  await set(ref(db, `historial/${docenteUid}/${key}`), null);
+}
+
 /** Obtiene el historial de sesiones cerradas del docente actual */
 export async function obtenerHistorialDocente() {
-  const docenteUid = auth.currentUser?.uid;
+  const docenteUid = getEffectiveUid();
   if (!docenteUid) throw new Error('Debes estar autenticado.');
 
   // Lee desde /historial/{uid} — path privado del docente, sin restricciones de query

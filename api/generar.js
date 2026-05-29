@@ -93,7 +93,21 @@ Reglas: pasaje de 2-4 oraciones; la respuesta correcta debe estar respaldada por
       )
       .join('\n');
 
-    userPrompt = `Tema: ${tema}
+    let contextPrompt = '';
+    if (textoBase && textoBase.trim()) {
+      contextPrompt = `
+🚨 FUENTE DE DATOS / TEXTO BASE:
+Utiliza el siguiente texto (que puede ser un cuestionario previo o un resumen de contenido) como la fuente exclusiva para generar o adaptar las actividades.
+Si es un cuestionario copiado por lotes, adáptalo y conviértelo a los formatos y tipos de actividades especificados abajo.
+Si es un resumen, extrae información relevante para crear las actividades solicitadas.
+---
+${textoBase.trim()}
+---
+`;
+    }
+
+    userPrompt = `${contextPrompt}
+Tema general: ${tema || 'General'}
 Nivel académico: ${nivel || 'bachillerato'}
 Total de actividades: ${total}
 

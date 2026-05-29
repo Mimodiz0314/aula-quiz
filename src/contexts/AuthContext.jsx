@@ -16,6 +16,29 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
   const [role, setRole] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [impersonatedTeacher, setImpersonatedTeacher] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('impersonated_teacher');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const impersonate = (teacher) => {
+    if (teacher) {
+      sessionStorage.setItem('impersonated_teacher', JSON.stringify(teacher));
+      setImpersonatedTeacher(teacher);
+    } else {
+      sessionStorage.removeItem('impersonated_teacher');
+      setImpersonatedTeacher(null);
+    }
+  };
+
+  const detenerImpersonacion = () => {
+    sessionStorage.removeItem('impersonated_teacher');
+    setImpersonatedTeacher(null);
+  };
 
   async function readUserData(currentUser) {
     try {
@@ -62,6 +85,8 @@ export function AuthProvider({ children }) {
     createUserWithEmailAndPassword(auth, email, password);
 
   const logout = async () => {
+    sessionStorage.removeItem('impersonated_teacher');
+    setImpersonatedTeacher(null);
     setRole(null);
     setUserData(null);
     await signOut(auth);
@@ -72,9 +97,31 @@ export function AuthProvider({ children }) {
 
   const loading = user === undefined;
 
+  const effectiveUser = user && impersonatedTeacher
+    ? new Proxy(user, {
+        get(target, prop) {
+          if (prop === 'uid') return impersonatedTeacher.uid;
+          return target[prop];
+        }
+      })
+    : user;
+
   return (
     <AuthContext.Provider
-      value={{ user, role, userData, loading, login, registrar, logout, cambiarMiPassword, refreshUserData }}
+      value={{
+        user: effectiveUser,
+        role,
+        userData: impersonatedTeacher || userData,
+        loading,
+        login,
+        registrar,
+        logout,
+        cambiarMiPassword,
+        refreshUserData,
+        impersonatedTeacher,
+        impersonate,
+        detenerImpersonacion,
+      }}
     >
       {children}
     </AuthContext.Provider>

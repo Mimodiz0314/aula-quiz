@@ -152,8 +152,8 @@ function parsearYValidarActividades(arr, tiposEsperados = []) {
 // Generación multi-tipo (nueva evaluación con 10 tipos)
 // seleccion es [ [tipo, cantidad], ... ] filtrando los que tienen valor > 0
 // ---------------------------------------------------------------------------
-export async function generarActividades({ tema, nivel = 'bachillerato', seleccion }) {
-  if (!tema || !seleccion?.length) throw new Error('Parámetros inválidos.');
+export async function generarActividades({ tema, nivel = 'bachillerato', seleccion, textoBase = '' }) {
+  if ((!tema && !textoBase) || !seleccion?.length) throw new Error('Parámetros inválidos.');
 
   const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   const endpoint = `${apiBase}/api/generar`;
@@ -166,7 +166,7 @@ export async function generarActividades({ tema, nivel = 'bachillerato', selecci
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tema, nivel, seleccion }),
+      body: JSON.stringify({ tema, nivel, seleccion, textoBase }),
     });
   } catch (networkErr) {
     throw new Error(`No se pudo conectar con el servidor de IA: ${networkErr.message}`);

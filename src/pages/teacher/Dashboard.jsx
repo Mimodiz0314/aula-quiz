@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { evaluarEstudiante, calcularNota } from '../../utils/grading.js';
 import { cerrarSesion } from '../../services/sessionService.js';
 
 export default function Dashboard({ pin, sesion }) {
   const navigate = useNavigate();
+  const [mostrarConfirm, setMostrarConfirm] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
   const preguntas = sesion.preguntas || [];
   const total = preguntas.length;
 
@@ -32,10 +34,22 @@ export default function Dashboard({ pin, sesion }) {
 
   const aprobados = filas.filter((f) => f.nota >= 3.0).length;
 
-  async function handleCerrar() {
-    if (!confirm('¿Quieres finalizar esta sesión de juego y guardar los resultados en tu historial?')) return;
-    await cerrarSesion(pin);
-    navigate('/docente');
+  function handleCerrar() {
+    setMostrarConfirm(true);
+  }
+
+  async function executeCerrar() {
+    setConfirmando(true);
+    try {
+      await cerrarSesion(pin);
+      setMostrarConfirm(false);
+      navigate('/docente');
+    } catch (e) {
+      console.error(e);
+      alert('Error al guardar la sesión: ' + e.message);
+    } finally {
+      setConfirmando(false);
+    }
   }
 
   function exportarExcel() {
@@ -323,6 +337,42 @@ export default function Dashboard({ pin, sesion }) {
         </aside>
       </div>
 
+      {/* Modal de Confirmación Premium */}
+      {mostrarConfirm && (
+        <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col items-center text-center animate-scale-in">
+            <div className="w-16 h-16 bg-kahootBlue/10 rounded-full flex items-center justify-center text-3xl mb-6">
+              💾
+            </div>
+            <h3 className="font-black text-2xl mb-3 text-ink">¿Finalizar y guardar juego?</h3>
+            <p className="font-bold text-ink/50 text-sm mb-8 leading-relaxed">
+              Esta acción guardará todas las notas de los estudiantes en tu historial y cerrará la sala activa permanentemente.
+            </p>
+            
+            {confirmando ? (
+              <div className="flex flex-col items-center gap-3 py-2 w-full">
+                <div className="w-8 h-8 border-4 border-kahootBlue border-t-transparent rounded-full animate-spin" />
+                <span className="font-bold text-sm text-kahootBlue">Guardando resultados y cerrando sala…</span>
+              </div>
+            ) : (
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setMostrarConfirm(false)}
+                  className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeCerrar}
+                  className="flex-1 btn-primary bg-kahootGreen hover:bg-kahootGreen/90 py-3 text-white font-black"
+                >
+                  Sí, Guardar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

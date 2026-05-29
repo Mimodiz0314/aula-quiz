@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
-import { obtenerHistorialDocente } from '../../services/sessionService.js';
+import { obtenerHistorialDocente, eliminarHistorial, crearSesion } from '../../services/sessionService.js';
 
 export default function TeacherDashboard() {
   const { userData, logout, cambiarMiPassword } = useAuth();
@@ -11,6 +11,8 @@ export default function TeacherDashboard() {
   const [cargandoHistorial, setCargandoHistorial] = useState(true);
   const [modalPassword, setModalPassword] = useState(false);
   const [sesionDetalle, setSesionDetalle] = useState(null); // sesión seleccionada para ver notas
+  const [reutilizando, setReutilizando] = useState(false);
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState(null);
 
   useEffect(() => {
     obtenerHistorialDocente()
@@ -18,6 +20,47 @@ export default function TeacherDashboard() {
       .catch(console.error)
       .finally(() => setCargandoHistorial(false));
   }, []);
+
+  function handleEliminar(key) {
+    setConfirmDeleteKey(key);
+  }
+
+  async function executeEliminar(key) {
+    try {
+      await eliminarHistorial(key);
+      setHistorial(prev => prev.filter(s => s.key !== key));
+      if (sesionDetalle?.key === key) {
+        setSesionDetalle(null);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error al eliminar: ' + e.message);
+    } finally {
+      setConfirmDeleteKey(null);
+    }
+  }
+
+  function handleEdit(sesion) {
+    navigate('/docente/nueva', {
+      state: {
+        actividades: sesion.preguntas || [],
+        tema: sesion.tema || ''
+      }
+    });
+  }
+
+  async function handleReuse(sesion) {
+    setReutilizando(true);
+    try {
+      const newPin = await crearSesion(sesion.preguntas || [], sesion.tema || '');
+      navigate(`/docente/sesion/${newPin}`);
+    } catch (e) {
+      console.error(e);
+      alert('Error al reutilizar la sesión: ' + e.message);
+    } finally {
+      setReutilizando(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gameBg">
@@ -106,6 +149,9 @@ export default function TeacherDashboard() {
                   key={s.key}
                   sesion={s}
                   onClick={() => setSesionDetalle(s)}
+                  onDelete={handleEliminar}
+                  onEdit={handleEdit}
+                  onReuse={handleReuse}
                 />
               ))}
             </div>
@@ -115,7 +161,7 @@ export default function TeacherDashboard() {
 
       {/* Modal: ver notas de una sesión */}
       {sesionDetalle && (
-        <ModalNotas sesion={sesionDetalle} onClose={() => setSesionDetalle(null)} />
+        <ModalNotas sesion={sesionDetalle} onClose={() => setSesionDetalle(null)} onDelete={handleEliminar} />
       )}
 
       {/* Modal: Cambiar mi contraseña */}
@@ -125,6 +171,45 @@ export default function TeacherDashboard() {
           cambiarMiPassword={cambiarMiPassword}
         />
       )}
+
+      {/* Modal de confirmación para eliminar */}
+      {confirmDeleteKey && (
+        <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col items-center text-center animate-scale-in">
+            <div className="w-16 h-16 bg-deny/10 rounded-full flex items-center justify-center text-3xl mb-6">
+              🗑️
+            </div>
+            <h3 className="font-black text-2xl mb-3 text-ink">¿Eliminar del historial?</h3>
+            <p className="font-bold text-ink/50 text-sm mb-8 leading-relaxed">
+              Esta acción eliminará de forma permanente el registro de esta sesión. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setConfirmDeleteKey(null)}
+                className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => executeEliminar(confirmDeleteKey)}
+                className="flex-1 btn-primary bg-deny hover:bg-deny/90 py-3 text-white font-black"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Indicador de carga para reutilización */}
+      {reutilizando && (
+        <div className="fixed inset-0 bg-white/80 z-[60] flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-4 border border-mist max-w-xs text-center">
+            <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+            <span className="font-black text-lg text-purple-600">Reutilizando cuestionario…</span>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -132,7 +217,7 @@ export default function TeacherDashboard() {
 // ---------------------------------------------------------------------------
 // Fila de sesión en el historial
 // ---------------------------------------------------------------------------
-function SesionFila({ sesion, onClick }) {
+function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse }) {
   const nEstudiantes = sesion.total_estudiantes || 0;
   const promedio = sesion.promedio_grupo;
   const fecha = sesion.cerrada_en
@@ -142,9 +227,9 @@ function SesionFila({ sesion, onClick }) {
       : '—';
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className="w-full px-8 py-5 flex items-center justify-between gap-4 hover:bg-gameBg/50 transition-colors text-left"
+      className="w-full px-8 py-5 flex items-center justify-between gap-4 hover:bg-gameBg/50 transition-colors text-left cursor-pointer group"
     >
       <div className="flex items-center gap-5 min-w-0">
         <span className="font-black text-2xl text-kahootBlue tracking-wider shrink-0">
@@ -162,25 +247,60 @@ function SesionFila({ sesion, onClick }) {
           <div className="font-bold text-xs text-ink/40">{fecha}</div>
         </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         {promedio !== undefined && (
-          <span className={`font-black text-xl ${
+          <span className={`font-black text-base md:text-xl shrink-0 ${
             promedio >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'
           }`}>
             Prom. {promedio}
           </span>
         )}
-        <span className="text-ink/30 text-sm font-bold">Ver notas →</span>
+        <div className="flex items-center gap-1 no-print">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(sesion);
+            }}
+            className="p-1.5 md:p-2 text-kahootBlue hover:bg-kahootBlue/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
+            title="Editar cuestionario"
+          >
+            ✏️
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onReuse(sesion);
+            }}
+            className="p-1.5 md:p-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
+            title="Reutilizar (Jugar)"
+          >
+            🔄
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(sesion.key);
+            }}
+            className="p-1.5 md:p-2 text-deny hover:bg-deny/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
+            title="Eliminar del historial"
+          >
+            🗑️
+          </button>
+        </div>
+        <span className="text-ink/30 text-sm font-bold hidden sm:inline group-hover:hidden transition-all shrink-0">
+          Ver notas →
+        </span>
       </div>
-    </button>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Modal: Tabla de notas de una sesión archivada
 // ---------------------------------------------------------------------------
-function ModalNotas({ sesion, onClose }) {
+function ModalNotas({ sesion, onClose, onDelete }) {
   const navigate = useNavigate();
+  const [lanzando, setLanzando] = useState(false);
   const resultados = sesion.resultados || [];
   const aprobados = resultados.filter(r => r.nota >= 3.0).length;
 
@@ -191,6 +311,20 @@ function ModalNotas({ sesion, onClose }) {
         tema: sesion.tema || ''
       }
     });
+  }
+
+  async function publicarDeNuevo() {
+    setLanzando(true);
+    try {
+      const newPin = await crearSesion(sesion.preguntas || [], sesion.tema || '');
+      onClose();
+      navigate(`/docente/sesion/${newPin}`);
+    } catch (e) {
+      console.error(e);
+      alert('Error al publicar de nuevo: ' + e.message);
+    } finally {
+      setLanzando(false);
+    }
   }
 
   function exportarCSV() {
@@ -276,23 +410,40 @@ function ModalNotas({ sesion, onClose }) {
           )}
         </div>
 
-        {/* Footer con exportar */}
-        <div className="px-8 py-5 border-t border-mist flex flex-wrap gap-3 justify-end">
-          <button
-            onClick={republicarCuestionario}
-            className="btn-secondary flex items-center gap-2 text-kahootBlue border-kahootBlue/30 hover:bg-kahootBlue/5"
-          >
-            🔄 Reutilizar Cuestionario
-          </button>
-          <button
-            onClick={exportarCSV}
-            className="btn-secondary flex items-center gap-2 text-kahootGreen border-kahootGreen/30"
-          >
-            📊 Exportar CSV
-          </button>
-          <button onClick={onClose} className="btn-primary bg-ink">
-            Cerrar
-          </button>
+        {/* Footer con acciones */}
+        <div className="px-8 py-5 border-t border-mist flex flex-wrap gap-3 justify-between items-center no-print">
+          <div>
+            <button
+              onClick={() => onDelete(sesion.key)}
+              className="btn-secondary flex items-center gap-2 text-deny border-deny/30 hover:bg-deny/5"
+            >
+              🗑️ Borrar
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={exportarCSV}
+              className="btn-secondary flex items-center gap-2 text-kahootGreen border-kahootGreen/30 hover:bg-kahootGreen/5"
+            >
+              📊 Exportar CSV
+            </button>
+            <button
+              onClick={republicarCuestionario}
+              className="btn-secondary flex items-center gap-2 text-kahootBlue border-kahootBlue/30 hover:bg-kahootBlue/5"
+            >
+              ✏️ Editar
+            </button>
+            <button
+              onClick={publicarDeNuevo}
+              disabled={lanzando}
+              className="btn-primary bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              {lanzando ? 'Iniciando…' : '🔄 Reutilizar (Jugar)'}
+            </button>
+            <button onClick={onClose} className="btn-primary bg-ink">
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     </div>
