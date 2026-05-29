@@ -7,6 +7,14 @@ import { TIPOS, TIPOS_LISTA } from '../../types/activityTypes.js';
 
 const CONTADORES_INICIAL = Object.fromEntries(TIPOS_LISTA.map(t => [t.key, 0]));
 
+// Grados por categoría (opcional) y niveles de dificultad.
+const GRADOS = {
+  primaria: ['Preescolar', '1°', '2°', '3°', '4°', '5°'],
+  bachillerato: ['6°', '7°', '8°', '9°', '10°', '11°'],
+  universidad: ['Semestres 1–3', 'Semestres 4–6', 'Semestres 7+'],
+};
+const DIFICULTADES = ['Básico', 'Intermedio', 'Avanzado'];
+
 export default function Setup({ onCreated }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -16,6 +24,8 @@ export default function Setup({ onCreated }) {
   const [textoBase, setTextoBase] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [nivel, setNivel] = useState('bachillerato');
+  const [grado, setGrado] = useState('');         // opcional
+  const [dificultad, setDificultad] = useState(''); // opcional
   const [encabezado, setEncabezado] = useState(() => {
     try { return JSON.parse(localStorage.getItem('aula_encabezado')) || {}; }
     catch { return {}; }
@@ -62,6 +72,8 @@ export default function Setup({ onCreated }) {
       const resultado = await generarActividades({
         tema: temaFinal,
         nivel,
+        grado,
+        dificultad,
         seleccion,
         textoBase: isTexto ? textoBase.trim() : '',
         youtubeUrl: isYoutube ? youtubeUrl.trim() : ''
@@ -274,7 +286,7 @@ La ley de Ohm establece la relación entre...`}
         )}
 
         {/* Nivel */}
-        <div className="mb-10">
+        <div className="mb-8">
           <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-3 block">
             Nivel académico
           </label>
@@ -282,7 +294,7 @@ La ley de Ohm establece la relación entre...`}
             {['primaria', 'bachillerato', 'universidad'].map(n => (
               <button
                 key={n}
-                onClick={() => setNivel(n)}
+                onClick={() => { setNivel(n); setGrado(''); }}
                 disabled={cargando}
                 className={`px-5 py-2 rounded-xl font-bold text-sm capitalize transition-colors ${
                   nivel === n
@@ -294,6 +306,58 @@ La ley de Ohm establece la relación entre...`}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Grado / curso (opcional, depende de la categoría) */}
+        <div className="mb-8">
+          <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-3 block">
+            Grado / curso <span className="text-ink/30 normal-case tracking-normal">(opcional)</span>
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            {(GRADOS[nivel] || []).map(g => (
+              <button
+                key={g}
+                onClick={() => setGrado(grado === g ? '' : g)}
+                disabled={cargando}
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors ${
+                  grado === g
+                    ? 'bg-kahootBlue text-white'
+                    : 'bg-ink/5 text-ink/60 hover:bg-ink/10'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-ink/40 font-bold mt-2">
+            La IA adapta el contenido al desarrollo cognitivo del grado elegido.
+          </p>
+        </div>
+
+        {/* Nivel de dificultad (opcional) */}
+        <div className="mb-10">
+          <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-3 block">
+            Nivel de dificultad <span className="text-ink/30 normal-case tracking-normal">(opcional)</span>
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            {DIFICULTADES.map(d => (
+              <button
+                key={d}
+                onClick={() => setDificultad(dificultad === d ? '' : d)}
+                disabled={cargando}
+                className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
+                  dificultad === d
+                    ? 'bg-kahootGreen text-white'
+                    : 'bg-ink/5 text-ink/60 hover:bg-ink/10'
+                }`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-ink/40 font-bold mt-2">
+            Ajusta la profundidad dentro del mismo grado (Básico = recordar/comprender · Avanzado = analizar/crear).
+          </p>
         </div>
 
         {/* Datos para la guía impresa (opcional, se recuerdan) */}

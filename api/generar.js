@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  let { tema, cantidad, nivel, textoBase, seleccion, youtubeUrl } = req.body || {};
+  let { tema, cantidad, nivel, grado, dificultad, textoBase, seleccion, youtubeUrl } = req.body || {};
 
   // Si se envió un enlace de YouTube, intentamos extraer la transcripción primero
   if (youtubeUrl && youtubeUrl.trim()) {
@@ -42,6 +42,9 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'Parámetros faltantes: debes proveer un tema, un textoBase o un youtubeUrl.' });
     return;
   }
+
+  // Guía de adaptación cognitiva (grado + dificultad). Vacía si no se especifican.
+  const guiaNivel = construirGuiaNivel(nivel, grado, dificultad);
 
   let systemPrompt = '';
   let userPrompt = '';
@@ -128,7 +131,7 @@ ${textoBase.trim()}
 
     userPrompt = `${contextPrompt}
 Tema general: ${tema || 'General'}
-Nivel académico: ${nivel || 'bachillerato'}
+Nivel académico: ${nivel || 'bachillerato'}${guiaNivel}
 Total de actividades: ${total}
 
 Genera EXACTAMENTE estas ${total} actividades en este orden. El campo "tipo" de cada objeto DEBE ser EXACTAMENTE el indicado:
@@ -148,7 +151,7 @@ FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdow
 [{"tipo":"seleccion_clasica","pregunta":"string","opciones":["Op1","Op2","Op3","Op4"],"correcta":0}]
 El campo "correcta" es el índice 0-3 de la opción correcta.
 Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
-    userPrompt = `Extrae el cuestionario del siguiente texto:\n\n${textoBase}`;
+    userPrompt = `Extrae el cuestionario del siguiente texto:${guiaNivel}\n\n${textoBase}`;
 
   } else {
     systemPrompt = `Eres un evaluador senior con experiencia en pruebas estandarizadas ICFES Saber (Colombia).
@@ -163,7 +166,7 @@ Genera EXACTAMENTE ${cantidad || 10} preguntas de selección múltiple cumpliend
 FORMATO DE SALIDA — EXCLUSIVAMENTE este JSON, sin texto adicional, sin Markdown:
 [{"tipo":"seleccion_clasica","pregunta":"string","opciones":["A...","B...","C...","D..."],"correcta":0}]
 Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
-    userPrompt = `Tema: ${tema}\nNivel del estudiante: ${nivel || 'bachillerato'}\nGenera ${cantidad || 10} preguntas siguiendo estrictamente el formato JSON especificado.`;
+    userPrompt = `Tema: ${tema}\nNivel del estudiante: ${nivel || 'bachillerato'}${guiaNivel}\nGenera ${cantidad || 10} preguntas siguiendo estrictamente el formato JSON especificado.`;
   }
 
   const providers = [
@@ -269,6 +272,49 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
   }
 
   res.status(502).json({ error: `Todos los proveedores de IA fallaron. Errores: ${errorMsg}` });
+}
+
+// ---------------------------------------------------------------------------
+// GUÍA DE ADAPTACIÓN COGNITIVA (grado + dificultad)
+// Convierte el grado y la dificultad en instrucciones claras para que la IA
+// ajuste el contenido al desarrollo del estudiante. Si no se especifican,
+// devuelve cadena vacía (comportamiento idéntico al anterior).
+// ---------------------------------------------------------------------------
+const DESC_GRADO = {
+  'Preescolar': 'Niñas y niños de 4-5 años (etapa preoperacional). Vocabulario muy simple y concreto, frases muy cortas, ideas del entorno inmediato (familia, colores, animales, números del 1 al 10). Evita por completo las abstracciones.',
+  '1°': 'Niños de ~6 años. Lectura inicial y conteo básico. Conceptos concretos y cotidianos; enunciados muy cortos y directos.',
+  '2°': 'Niños de ~7 años. Lectura fluida incipiente, sumas y restas simples, secuencias sencillas. Lenguaje concreto.',
+  '3°': 'Niños de ~8 años. Comprensión lectora básica, multiplicación inicial, clasificaciones simples.',
+  '4°': 'Niños de ~9 años. Razonamiento concreto más sólido, fracciones simples, relaciones de causa-efecto sencillas.',
+  '5°': 'Niños de ~10 años. Comprensión lectora intermedia, operaciones combinadas, primeras generalizaciones.',
+  '6°': 'Estudiantes de ~11 años (tránsito de lo concreto a lo formal). Pensamiento abstracto incipiente y guiado; definiciones y comparaciones claras.',
+  '7°': 'Estudiantes de ~12 años. Pensamiento abstracto en desarrollo; relaciones y clasificaciones más complejas.',
+  '8°': 'Estudiantes de ~13 años. Abstracción creciente; hipótesis sencillas y análisis de causas.',
+  '9°': 'Estudiantes de ~14 años. Pensamiento formal; análisis, argumentación básica y relaciones múltiples.',
+  '10°': 'Estudiantes de ~15-16 años. Pensamiento abstracto consolidado; análisis crítico, síntesis y evaluación de argumentos.',
+  '11°': 'Estudiantes de ~16-17 años (preuniversitario, estilo ICFES Saber 11). Análisis crítico, inferencia, evaluación y resolución de problemas complejos.',
+  'Semestres 1–3': 'Estudiantes universitarios de primeros semestres. Fundamentos disciplinares: comprensión y aplicación de conceptos base.',
+  'Semestres 4–6': 'Estudiantes universitarios intermedios. Análisis disciplinar, integración de conceptos y resolución de problemas aplicados.',
+  'Semestres 7+': 'Estudiantes universitarios avanzados. Pensamiento crítico experto: evaluación, síntesis y casos complejos y especializados.',
+};
+
+const DESC_DIFICULTAD = {
+  'Básico': 'Profundidad BÁSICA (recordar y comprender): definiciones, identificación y ejemplos directos. Enunciados cortos con una sola idea; distractores claramente distinguibles.',
+  'Intermedio': 'Profundidad INTERMEDIA (aplicar y analizar): usar conceptos en situaciones, comparar, clasificar y relacionar causa-efecto. Distractores plausibles.',
+  'Avanzado': 'Profundidad AVANZADA (evaluar y crear): juzgar, argumentar, inferir y resolver problemas de varios pasos. Distractores muy plausibles que exijan discriminar finamente.',
+};
+
+function construirGuiaNivel(nivel, grado, dificultad) {
+  const partes = [];
+  if (grado) {
+    const desc = DESC_GRADO[grado];
+    partes.push(`Grado/curso: ${grado}.${desc ? ' ' + desc : ''}`);
+  }
+  if (dificultad && DESC_DIFICULTAD[dificultad]) {
+    partes.push(DESC_DIFICULTAD[dificultad]);
+  }
+  if (partes.length === 0) return '';
+  return `\n\n🎯 ADAPTACIÓN AL NIVEL DEL ESTUDIANTE (OBLIGATORIO):\n${partes.map((p) => `- ${p}`).join('\n')}\n- Ajusta el vocabulario, la longitud y complejidad del enunciado, el número de pasos y la sutileza de los distractores a este perfil. No excedas ni subestimes el nivel cognitivo indicado.`;
 }
 
 // ---------------------------------------------------------------------------
