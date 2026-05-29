@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion } from '../../services/sessionService.js';
@@ -206,6 +206,9 @@ export default function TeacherDashboard() {
             </div>
           </div>
         )}
+
+        {/* Progreso por grado */}
+        {historial.length > 0 && <ProgresoPorGrado historial={historial} />}
 
         {/* Historial de sesiones */}
         <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden">
@@ -683,6 +686,107 @@ function ModalMiPassword({ onClose, cambiarMiPassword }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tablero de progreso por grado: agrupa el historial por grado y grafica la
+// evolución del promedio del grupo a lo largo del tiempo (barras CSS).
+// ---------------------------------------------------------------------------
+const ORDEN_GRADOS = [
+  'Preescolar', '1°', '2°', '3°', '4°', '5°',
+  '6°', '7°', '8°', '9°', '10°', '11°',
+  'Semestres 1–3', 'Semestres 4–6', 'Semestres 7+', 'Sin grado',
+];
+
+function ProgresoPorGrado({ historial }) {
+  const grupos = useMemo(() => {
+    const map = {};
+    historial.forEach((h) => {
+      const g = h.grado || 'Sin grado';
+      if (!map[g]) map[g] = [];
+      map[g].push(h);
+    });
+    Object.values(map).forEach((arr) =>
+      arr.sort((a, b) => (a.cerrada_en || a.creada_en || 0) - (b.cerrada_en || b.creada_en || 0))
+    );
+    return Object.keys(map)
+      .sort((a, b) => {
+        const ia = ORDEN_GRADOS.indexOf(a);
+        const ib = ORDEN_GRADOS.indexOf(b);
+        return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+      })
+      .map((k) => ({ grado: k, sesiones: map[k] }));
+  }, [historial]);
+
+  if (grupos.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden mb-10">
+      <div className="px-8 py-6 border-b border-mist flex items-center justify-between">
+        <h2 className="font-black text-xl">📈 Progreso por grado</h2>
+        <span className="text-sm font-bold text-ink/40">{grupos.length} grado{grupos.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="p-6 space-y-8">
+        {grupos.map(({ grado, sesiones }) => (
+          <BloqueGrado key={grado} grado={grado} sesiones={sesiones} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BloqueGrado({ grado, sesiones }) {
+  const proms = sesiones.map((s) => s.promedio_grupo || 0);
+  const avg = proms.length ? proms.reduce((a, b) => a + b, 0) / proms.length : 0;
+  const delta = proms.length > 1 ? +(proms[proms.length - 1] - proms[0]).toFixed(1) : 0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-black text-lg">{grado}</span>
+          <span className="text-xs font-bold text-ink/40">{sesiones.length} sesión{sesiones.length !== 1 ? 'es' : ''}</span>
+        </div>
+        <div className="flex items-center gap-3 text-sm font-bold">
+          <span className="text-ink/50">
+            Promedio: <span className={avg >= 3 ? 'text-kahootGreen' : 'text-kahootRed'}>{avg.toFixed(1)}</span>
+          </span>
+          {sesiones.length > 1 && (
+            <span className={delta > 0 ? 'text-kahootGreen' : delta < 0 ? 'text-kahootRed' : 'text-ink/40'}>
+              {delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : '– 0'}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-end gap-3 h-36 bg-gameBg rounded-2xl p-4 overflow-x-auto">
+        {sesiones.map((s, i) => {
+          const p = s.promedio_grupo || 0;
+          const altura = Math.max(6, (p / 5) * 85); // % del alto, deja espacio a las etiquetas
+          const aprob = p >= 3;
+          const fecha = s.cerrada_en || s.creada_en
+            ? new Date(s.cerrada_en || s.creada_en).toLocaleDateString('es', { day: 'numeric', month: 'short' })
+            : '';
+          return (
+            <div
+              key={s.key || i}
+              className="flex flex-col items-center justify-end shrink-0 w-14 h-full"
+              title={`${s.tema || '—'}${s.dificultad ? ' · ' + s.dificultad : ''} · Prom. ${p} · ${fecha}`}
+            >
+              <span className="text-[11px] font-black text-ink/60 mb-1">{p}</span>
+              <div
+                className={`w-full rounded-t-md transition-all ${aprob ? 'bg-kahootGreen' : 'bg-kahootRed'}`}
+                style={{ height: `${altura}%` }}
+              />
+              <span className="text-[9px] font-bold text-ink/40 mt-1 truncate w-full text-center">
+                {s.dificultad ? s.dificultad.slice(0, 4) : fecha}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
