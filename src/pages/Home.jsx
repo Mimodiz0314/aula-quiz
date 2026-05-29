@@ -16,8 +16,16 @@ export default function Home() {
             Aula<span className="text-kahootBlue">!</span>
           </div>
         </div>
-        <div className="font-bold text-xs tracking-[0.2em] uppercase text-ink/40 bg-mist/50 px-3 py-1 rounded-full">
-          v2.0 · Gamificado
+        <div className="flex items-center gap-3">
+          <div className="font-bold text-xs tracking-[0.2em] uppercase text-ink/40 bg-mist/50 px-3 py-1 rounded-full hidden md:block">
+            v2.0 · Gamificado
+          </div>
+          <Link
+            to="/admin/login"
+            className="font-bold text-sm px-4 py-2 rounded-xl border-2 border-ink text-ink hover:bg-ink hover:text-white transition-colors"
+          >
+            Administración
+          </Link>
         </div>
       </header>
 
