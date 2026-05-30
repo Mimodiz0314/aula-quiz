@@ -22,7 +22,7 @@ export function isOfflineEnabled() {
   } catch {
     /* localStorage no disponible → caemos al env */
   }
-  return import.meta.env.VITE_OFFLINE_ENABLED === 'true';
+  return true; // Habilitado permanentemente por petición del usuario
 }
 
 export function enableOfflineOverride() {
