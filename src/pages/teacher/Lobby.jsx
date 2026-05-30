@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { iniciarSesion, setDuracion, cerrarSesion, obtenerClaves } from '../../services/sessionService.js';
 import { useNavigate } from 'react-router-dom';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
+import LanHostPanel from '../../components/LanHostPanel.jsx';
 import { guardarSala } from '../../utils/savedRooms.js';
 import { fusionarLista } from '../../utils/clave.js';
 
@@ -136,6 +137,9 @@ export default function Lobby({ pin, sesion }) {
               {pin}
             </div>
           </div>
+
+          {/* Red local (solo en el APK del docente): QR + código para entrar sin internet */}
+          <LanHostPanel pin={pin} />
 
           {/* Selector de Límite de Tiempo Avanzado */}
           <div className="flex flex-col items-center gap-3 mb-8 bg-mist/20 p-4 rounded-2xl w-full max-w-md border border-mist/50">

@@ -6,11 +6,29 @@ import Reveal from './Reveal.jsx';
 import FinalScore from './FinalScore.jsx';
 import { useRealtimeSession } from '../../hooks/useRealtimeSession.js';
 import { ESTADOS } from '../../services/sessionService.js';
+import { parseJoinFromSearch, buildWsUrl } from '../../services/lan/joinLink.js';
+import { conectarClienteLAN } from '../../services/backends/lanBackend.js';
+import { WebSocketTransport } from '../../services/lan/transport.js';
+import { enableOfflineOverride } from '../../services/featureFlag.js';
 
 export default function StudentView() {
   const [pin, setPin] = useState(null);
   const [studentId, setStudentId] = useState(null);
+  const [lanPrefill, setLanPrefill] = useState(null); // PIN prefijado al venir por ?lan=
   const { sesion, loading } = useRealtimeSession(pin);
+
+  // ENTRADA POR RED LOCAL: si la URL trae ?lan=host:puerto&pin=, conectamos al
+  // host del docente por WebSocket (sin internet) y prefijamos el PIN.
+  useEffect(() => {
+    const info = parseJoinFromSearch(window.location.search);
+    if (!info || !info.pin) return;
+    enableOfflineOverride(); // el modo LAN requiere la capa offline activa
+    try {
+      const transport = WebSocketTransport(buildWsUrl(info.host, info.port));
+      conectarClienteLAN(info.pin, transport).catch(() => {});
+      setLanPrefill(info.pin);
+    } catch { /* ignore */ }
+  }, []);
 
   // RECONEXIÓN automática: intentar restaurar la sesión desde localStorage.
   // Iteramos las claves que empiezan por "quiz_student_".
@@ -36,7 +54,7 @@ export default function StudentView() {
     setStudentId(id);
   }
 
-  if (!pin || !studentId) return <Join onJoined={onJoined} />;
+  if (!pin || !studentId) return <Join onJoined={onJoined} pinInicial={lanPrefill} />;
   if (loading) return <CenteredMessage>Conectando…</CenteredMessage>;
   if (!sesion) {
     // Sesión borrada por el docente

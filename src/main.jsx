@@ -17,6 +17,12 @@ installDevToggle();
 import { installLanDemo } from './services/lanDemo.js';
 installLanDemo();
 
+// En la app instalada (APK), el modo offline/red local va activo por defecto
+// (el docente no tiene internet en el aula). Online sigue usando la nube igual.
+import { Capacitor } from '@capacitor/core';
+import { enableOfflineOverride } from './services/featureFlag.js';
+try { if (Capacitor.isNativePlatform && Capacitor.isNativePlatform()) enableOfflineOverride(); } catch { /* web */ }
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>

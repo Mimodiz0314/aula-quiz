@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react';
 import { registrarEstudiante, validarPin } from '../../services/sessionService.js';
 
-export default function Join({ onJoined }) {
+export default function Join({ onJoined, pinInicial }) {
   const [pin, setPin] = useState('');
   const [nombre, setNombre] = useState('');
   const [grado, setGrado] = useState('');
   const [paso, setPaso] = useState('pin'); // pin | datos
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
+
+  // Si venimos por red local (?lan=), el PIN ya está dado: lo prefijamos y
+  // saltamos directo a pedir nombre y curso.
+  useEffect(() => {
+    if (pinInicial) {
+      setPin(String(pinInicial));
+      setPaso('datos');
+    }
+  }, [pinInicial]);
 
   // Si hay sesión previa, mostrar opción de reconectar
   const [reconectable, setReconectable] = useState(null);
