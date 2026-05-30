@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
 import Home from './pages/Home.jsx';
 import TeacherView from './pages/teacher/TeacherView.jsx';
 import TeacherLogin from './pages/teacher/TeacherLogin.jsx';
@@ -9,11 +11,34 @@ import ForumTopic from './pages/teacher/ForumTopic.jsx';
 import StudentView from './pages/student/StudentView.jsx';
 import AdminLogin from './pages/admin/AdminLogin.jsx';
 import AdminPanel from './pages/admin/AdminPanel.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { useAuth } from './hooks/useAuth.js';
 
 export default function App() {
   const { impersonatedTeacher, detenerImpersonacion } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleBackButton = async ({ canGoBack }) => {
+      // If we are at the root (Home) or Login, we shouldn't go back, we should exit the app
+      if (location.pathname === '/' || location.pathname === '/docente/login') {
+        CapacitorApp.exitApp();
+      } else {
+        navigate(-1);
+      }
+    };
+
+    let backListener;
+    CapacitorApp.addListener('backButton', handleBackButton).then(listener => {
+      backListener = listener;
+    }).catch(e => console.warn('Not running natively', e));
+
+    return () => {
+      if (backListener) backListener.remove();
+    };
+  }, [navigate, location]);
 
   return (
     <div className="min-h-screen grain flex flex-col">
@@ -43,6 +68,7 @@ export default function App() {
           <Route path="/jugar" element={<StudentView />} />
 
           {/* Rutas del docente */}
+          <Route path="/privacidad" element={<PrivacyPolicy />} />
           <Route path="/docente/login" element={<TeacherLogin />} />
           <Route
             path="/docente"

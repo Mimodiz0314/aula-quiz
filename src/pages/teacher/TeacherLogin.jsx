@@ -448,6 +448,15 @@ export default function TeacherLogin() {
             ← Volver a Inicio
           </button>
         </div>
+
+        <div className="text-center mt-6">
+          <button 
+            onClick={() => navigate('/privacidad')} 
+            className="text-xs font-bold text-ink/40 hover:text-ink hover:underline transition-colors"
+          >
+            Términos y Política de Privacidad
+          </button>
+        </div>
       </div>
     </main>
   );
