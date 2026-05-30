@@ -10,22 +10,22 @@ export default function Home() {
       <div className="absolute inset-0 z-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
       
       {/* Encabezado con Co-Branding */}
-      <header className="px-6 md:px-12 pt-8 flex items-center justify-between">
-        <div className="flex items-center gap-4 select-none">
+      <header className="px-4 md:px-12 pt-6 md:pt-8 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
+        <div className="flex items-center justify-center gap-3 md:gap-4 select-none w-full md:w-auto">
           <img 
             src="/logo.png" 
             alt="EduMaster Pro Logo" 
-            className="h-16 md:h-20 w-auto object-contain transition-transform hover:scale-105 duration-200 mix-blend-multiply" 
+            className="h-12 md:h-20 w-auto object-contain transition-transform hover:scale-105 duration-200 mix-blend-multiply" 
           />
-          <div className="h-10 w-[2px] bg-slate-300"></div>
-          <div className="font-black text-3xl tracking-tighter italic text-brandPrimary">
+          <div className="h-8 md:h-10 w-[2px] bg-slate-300"></div>
+          <div className="font-black text-2xl md:text-3xl tracking-tighter italic text-brandPrimary">
             Aula<span className="text-brandAccent">!</span>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-center gap-3 md:gap-4 w-full md:w-auto flex-wrap">
           <button 
             onClick={toggleLanguage}
-            className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-mist shadow-sm font-bold text-xs uppercase hover:bg-gameBg transition-colors"
+            className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-mist shadow-sm font-bold text-xs uppercase hover:bg-gameBg transition-colors shrink-0"
           >
             🌍 {language === 'es' ? 'ES' : 'EN'}
           </button>
@@ -34,7 +34,7 @@ export default function Home() {
           </div>
           <Link
             to="/admin/login"
-            className="font-bold text-sm px-5 py-2.5 rounded-xl border border-mist bg-white text-ink hover:bg-gameBg hover:text-brandPrimary hover:border-brandPrimary/30 transition-all shadow-sm"
+            className="font-bold text-xs md:text-sm px-4 md:px-5 py-2 md:py-2.5 rounded-xl border border-mist bg-white text-ink hover:bg-gameBg hover:text-brandPrimary hover:border-brandPrimary/30 transition-all shadow-sm shrink-0"
           >
             {t('home.admin')}
           </Link>
