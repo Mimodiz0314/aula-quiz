@@ -13,6 +13,10 @@ registerSW({ onNeedRefresh() {}, onOfflineReady() {} });
 import { installDevToggle } from './services/devToggle.js';
 installDevToggle();
 
+// Demo de sesión LAN en dos pestañas (consola: aulaLan.host()/join()/status()).
+import { installLanDemo } from './services/lanDemo.js';
+installLanDemo();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
