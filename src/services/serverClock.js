@@ -13,6 +13,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase/config.js';
 import { isOfflineEnabled } from './featureFlag.js';
 import { isOnline } from './connectivity.js';
+import { hayClienteLANActivo, subscribeOffsetClienteLAN } from './backends/lanBackend.js';
 
 // Listener de nube: idéntico al código original de useServerTimer.
 function subscribeCloudOffset(cb) {
@@ -27,6 +28,10 @@ function subscribeCloudOffset(cb) {
  * - Flag ON y offline → offset 0 (una sola llamada), sin tocar Firebase.
  */
 export function subscribeServerOffset(cb) {
+  // Cliente LAN: el alumno calibra su reloj contra el host (autoridad de tiempo).
+  if (hayClienteLANActivo()) {
+    return subscribeOffsetClienteLAN(cb);
+  }
   if (isOfflineEnabled() && !isOnline()) {
     cb(0);
     return () => {};

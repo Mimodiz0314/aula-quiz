@@ -13,6 +13,7 @@
 
 import * as cloud from './backends/cloudBackend.js';
 import * as local from './backends/localBackend.js';
+import * as lan from './backends/lanBackend.js';
 import { isOfflineEnabled } from './featureFlag.js';
 import { isOnline } from './connectivity.js';
 import { getAllSesionPins } from './localStore.js';
@@ -45,6 +46,7 @@ export function pickBackend() {
 /** Motor para operaciones sobre un pin existente. */
 export function pickBackendForPin(pin) {
   if (!isOfflineEnabled()) return cloud;
+  if (lan.isLanPin(pin)) return lan;   // sesión en red local activa (host o cliente)
   if (isLocalPin(pin)) return local;
   return pickBackend();
 }

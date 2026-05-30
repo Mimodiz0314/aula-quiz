@@ -284,6 +284,40 @@ export async function registrarEstudiante(pin, nombre, grado) {
   return studentId;
 }
 
+/**
+ * Registro de estudiante EN LA SALA, sin tocar localStorage. Lo usa el host LAN
+ * para inscribir a alumnos remotos (la reconexión por localStorage es del propio
+ * dispositivo del alumno, no del host). `studentIdExistente` permite reconectar
+ * a un alumno que ya tenía id (lo guarda el cliente en SU dispositivo).
+ */
+export async function registrarEstudianteEnSala(pin, nombre, grado, studentIdExistente) {
+  const sesion = await store.getSesion(pin);
+  if (!sesion) throw new Error('La sala no existe.');
+  sesion.estudiantes = sesion.estudiantes || {};
+
+  if (studentIdExistente && sesion.estudiantes[studentIdExistente]) {
+    sesion.estudiantes[studentIdExistente].conectado = true;
+    await store.putSesion(pin, sesion);
+    return studentIdExistente;
+  }
+
+  const colision = Object.values(sesion.estudiantes).some(
+    (e) => e.nombre?.toLowerCase() === nombre.toLowerCase()
+  );
+  if (colision) throw new Error('Ya existe un estudiante con ese nombre.');
+
+  const studentId = uuid();
+  sesion.estudiantes[studentId] = {
+    nombre,
+    grado,
+    conectado: true,
+    respuestas_registradas: {},
+    unido_en: Date.now(),
+  };
+  await store.putSesion(pin, sesion);
+  return studentId;
+}
+
 export async function registrarRespuesta(pin, studentId, preguntaIdx, opcionIdx) {
   const sesion = await store.getSesion(pin);
   if (!sesion) return false;
