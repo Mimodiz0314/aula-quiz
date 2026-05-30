@@ -12,7 +12,7 @@ import { esAcierto } from '../../utils/grading.js';
 import { fusionarClave, ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../../utils/clave.js';
 import { TIPOS } from '../../types/activityTypes.js';
 import Leaderboard from '../../components/Leaderboard.jsx';
-import { guardarSala } from '../../utils/savedRooms.js';
+import { guardarSala, guardarContenidoSala } from '../../utils/savedRooms.js';
 import { hablar, textoLeible } from '../student/Question.jsx';
 
 const Triangle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2L22 20H2L12 2Z" /></svg>;
@@ -20,7 +20,7 @@ const Diamond = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-
 const Circle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><circle cx="12" cy="12" r="10" /></svg>;
 const Square = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>;
 const SHAPES = [Triangle, Diamond, Circle, Square];
-const COLORS = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGreen'];
+const COLORS = ['bg-brandDanger', 'bg-brandPrimary', 'bg-brandAccent', 'bg-brandSuccess'];
 
 export default function ControlPanel({ pin, sesion }) {
   const navigate = useNavigate();
@@ -29,7 +29,16 @@ export default function ControlPanel({ pin, sesion }) {
   // Ir a Mi Panel sin perder la sesión: guarda la sala (queda en "Salas activas")
   // y navega al panel. La sesión sigue viva; se vuelve con "Abrir sala".
   function irAMiPanel() {
-    try { guardarSala(sesion.docente_uid, { pin, tema: sesion.tema }); } catch { /* ignore */ }
+    try { 
+      guardarSala(sesion.docente_uid, { pin, tema: sesion.tema }); 
+      guardarContenidoSala(sesion.docente_uid, {
+        pin,
+        preguntas: fusionarLista(sesion.preguntas || [], claves),
+        tema: sesion.tema,
+        grado: sesion.grado,
+        dificultad: sesion.dificultad
+      }).catch(console.error);
+    } catch { /* ignore */ }
     navigate('/docente');
   }
   // Las respuestas correctas viven en /claves (no en /sesiones). El docente las
@@ -115,7 +124,7 @@ export default function ControlPanel({ pin, sesion }) {
         <div className="flex items-center gap-3">
           <div className="font-bold text-sm tracking-widest uppercase text-ink/50">Tiempo</div>
           <div className={`font-black tabular-nums text-4xl w-16 h-16 flex items-center justify-center bg-gameBg rounded-full ${
-            esActiva && !esSinLimite && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
+            esActiva && !esSinLimite && restante <= 5 ? 'text-brandDanger animate-pulse' : 'text-ink'
           }`}>
             {esActiva ? (esSinLimite ? '∞' : restante) : '0'}
           </div>
@@ -142,10 +151,10 @@ export default function ControlPanel({ pin, sesion }) {
             </div>
             {esRevelado && (
               <div className="mt-3 flex gap-2 justify-center text-sm font-bold">
-                <span className="bg-kahootGreen/10 text-kahootGreen px-3 py-1 rounded-full">
+                <span className="bg-brandSuccess/10 text-brandSuccess px-3 py-1 rounded-full">
                   ✓ {aciertos}
                 </span>
-                <span className="bg-kahootRed/10 text-kahootRed px-3 py-1 rounded-full">
+                <span className="bg-brandDanger/10 text-brandDanger px-3 py-1 rounded-full">
                   ✕ {respondieron - aciertos}
                 </span>
               </div>
@@ -160,14 +169,14 @@ export default function ControlPanel({ pin, sesion }) {
               let rowBg = 'bg-gameBg';
               let dotClass = 'w-3 h-3 rounded-full shrink-0';
               if (respondio && !esRevelado) {
-                rowBg = 'bg-kahootGreen/10';
-                dotClass += ' bg-kahootGreen animate-pulse';
+                rowBg = 'bg-brandSuccess/10';
+                dotClass += ' bg-brandSuccess animate-pulse';
               } else if (respondio && esRevelado && acertoCorrecto) {
-                rowBg = 'bg-kahootGreen/10';
-                dotClass += ' bg-kahootGreen';
+                rowBg = 'bg-brandSuccess/10';
+                dotClass += ' bg-brandSuccess';
               } else if (respondio && esRevelado && !acertoCorrecto) {
-                rowBg = 'bg-kahootRed/10';
-                dotClass += ' bg-kahootRed';
+                rowBg = 'bg-brandDanger/10';
+                dotClass += ' bg-brandDanger';
               } else {
                 dotClass += ' bg-mist';
               }
@@ -198,7 +207,7 @@ export default function ControlPanel({ pin, sesion }) {
             </button>
           )}
           {(esActiva || esAgotado) && (
-            <button onClick={() => revelarRespuesta(pin)} className="btn-primary bg-kahootBlue">
+            <button onClick={() => revelarRespuesta(pin)} className="btn-primary bg-brandPrimary">
               Mostrar respuesta
             </button>
           )}
@@ -208,7 +217,7 @@ export default function ControlPanel({ pin, sesion }) {
             </button>
           )}
           {esRevelado && (
-            <button onClick={() => siguientePregunta(pin)} className="btn-primary bg-kahootGreen">
+            <button onClick={() => siguientePregunta(pin)} className="btn-primary bg-brandSuccess">
               {idx + 1 >= total ? 'Ver podio final' : 'Siguiente actividad'}
             </button>
           )}
@@ -241,7 +250,7 @@ export default function ControlPanel({ pin, sesion }) {
             <div className="mt-8 flex justify-center">
               <button
                 onClick={() => { setMostrarTabla(false); siguientePregunta(pin); }}
-                className="btn-primary bg-kahootGreen px-10 shadow-md"
+                className="btn-primary bg-brandSuccess px-10 shadow-md"
               >
                 {idx + 1 >= total ? 'Ver podio final →' : 'Siguiente actividad →'}
               </button>
@@ -272,8 +281,8 @@ function SeleccionView({ actividad, tipo, estudiantes, idx, respondieron, esReve
   return (
     <>
       {tipo === 'detective_texto' && actividad.pasaje && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-kahootBlue">
-          <p className="font-bold text-xs tracking-widest uppercase text-kahootBlue mb-2">🕵️ Pasaje</p>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-brandPrimary">
+          <p className="font-bold text-xs tracking-widest uppercase text-brandPrimary mb-2">🕵️ Pasaje</p>
           <p className="font-bold text-base text-ink leading-relaxed">{actividad.pasaje}</p>
         </div>
       )}
@@ -347,7 +356,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
       <>
         <h2 className="font-black text-2xl md:text-3xl mb-4">{actividad.enunciado}</h2>
         {esRevelado && (
-          <div className="bg-kahootGreen/10 text-kahootGreen rounded-2xl p-4 font-black text-xl capitalize">
+          <div className="bg-brandSuccess/10 text-brandSuccess rounded-2xl p-4 font-black text-xl capitalize">
             ✓ {actividad.correcto}
             {actividad.explicacion && (
               <p className="text-sm font-bold text-ink/70 mt-2">{actividad.explicacion}</p>
@@ -366,7 +375,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
           {actividad.elementos.map((el, i) => (
             <span key={i} className={`px-4 py-2 rounded-xl font-bold text-sm ${
               esRevelado && i === actividad.intruso_idx
-                ? 'bg-kahootRed text-white'
+                ? 'bg-brandDanger text-white'
                 : 'bg-gameBg text-ink'
             }`}>
               {el}
@@ -389,8 +398,8 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
         {esRevelado ? (
           <div className="space-y-2">
             {items.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 bg-kahootGreen/10 rounded-xl p-3">
-                <span className="w-8 h-8 bg-kahootGreen text-white rounded-full flex items-center justify-center font-black text-sm shrink-0">
+              <div key={i} className="flex items-center gap-3 bg-brandSuccess/10 rounded-xl p-3">
+                <span className="w-8 h-8 bg-brandSuccess text-white rounded-full flex items-center justify-center font-black text-sm shrink-0">
                   {i + 1}
                 </span>
                 <span className="font-bold">{item}</span>
@@ -417,7 +426,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
           {filas.map((par, i) => (
             <div key={i} className="grid grid-cols-2 gap-3">
               <div className="bg-gameBg rounded-xl p-3 font-bold text-sm">{par.izquierda}</div>
-              <div className={`rounded-xl p-3 font-bold text-sm ${esRevelado ? 'bg-kahootGreen/10 text-kahootGreen' : 'bg-gameBg'}`}>
+              <div className={`rounded-xl p-3 font-bold text-sm ${esRevelado ? 'bg-brandSuccess/10 text-brandSuccess' : 'bg-gameBg'}`}>
                 {par.derecha}
               </div>
             </div>
@@ -434,7 +443,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
         <h2 className="font-black text-xl mb-4">{actividad.instruccion}</h2>
         <div className="grid grid-cols-2 gap-4">
           {actividad.categorias.map((cat, ci) => (
-            <div key={ci} className={`p-4 rounded-2xl ${esRevelado ? 'bg-kahootGreen/10' : 'bg-gameBg'}`}>
+            <div key={ci} className={`p-4 rounded-2xl ${esRevelado ? 'bg-brandSuccess/10' : 'bg-gameBg'}`}>
               <p className="font-black text-sm mb-2">{cat.nombre}</p>
               {(grupos[ci] || []).map((item, ii) => (
                 <p key={ii} className="text-sm font-bold text-ink/70 mb-1">{item}</p>
@@ -457,7 +466,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
               {i < actividad.respuestas.length && (
                 <span className={`mx-1 px-2 py-0.5 rounded-lg font-black ${
                   esRevelado
-                    ? 'bg-kahootGreen text-white'
+                    ? 'bg-brandSuccess text-white'
                     : 'bg-ink/10 text-ink/50'
                 }`}>
                   {esRevelado ? actividad.respuestas[i] : '___'}
@@ -470,7 +479,7 @@ function ActivityPreview({ actividad, tipo, esRevelado }) {
           {actividad.banco.map((w, i) => (
             <span key={i} className={`px-3 py-1 rounded-lg text-sm font-bold ${
               esRevelado && actividad.respuestas.includes(w)
-                ? 'bg-kahootGreen/10 text-kahootGreen'
+                ? 'bg-brandSuccess/10 text-brandSuccess'
                 : 'bg-gameBg text-ink/70'
             }`}>{w}</span>
           ))}

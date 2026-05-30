@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { generarActividades } from '../../services/aiService.js';
+import { generarActividades, logAIFeedback } from '../../services/aiService.js';
 import { crearSesion } from '../../services/sessionService.js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ReviewActivities from '../../components/ReviewActivities.jsx';
 import { TIPOS, TIPOS_LISTA } from '../../types/activityTypes.js';
 import { useAuth } from '../../hooks/useAuth.js';
-import { guardarSala } from '../../utils/savedRooms.js';
+import { guardarSala, guardarContenidoSala } from '../../utils/savedRooms.js';
+import { publishToBank } from '../../services/bankService.js';
 
 const CONTADORES_INICIAL = Object.fromEntries(TIPOS_LISTA.map(t => [t.key, 0]));
 
@@ -104,12 +105,33 @@ export default function Setup({ onCreated }) {
     setPaso('revisando');
   }
 
-  async function handleConfirmar(actividadesFinales) {
+  async function handleConfirmar(actividadesFinales, publicarBanco = false) {
     setCargando(true);
     setPaso('creando');
     try {
       if (actividadesFinales.length === 0) throw new Error('Debe haber al menos 1 actividad.');
+      
+      // MODO ESPONJA: Si fue generada por IA (tema, texto o youtube) y no manualmente, loggeamos cambios
+      if (['tema', 'texto', 'youtube'].includes(modoOrigen)) {
+        logAIFeedback(actividades, actividadesFinales, modoOrigen);
+      }
+
       const pin = await crearSesion(actividadesFinales, tema.trim(), { grado, dificultad });
+      
+      // Guardar también en "Salas activas" del panel para no perderla
+      guardarSala(user?.uid, { pin, tema: tema.trim() });
+      await guardarContenidoSala(user?.uid, { pin, preguntas: actividadesFinales, tema: tema.trim(), grado, dificultad });
+      
+      // Siempre publicar en el banco
+      await publishToBank(actividadesFinales, {
+        tema: tema.trim() || 'Evaluación',
+        grado,
+        nivel,
+        dificultad,
+        autorUid: publicarBanco ? user?.uid : null,
+        autorNombre: publicarBanco ? (user?.displayName || user?.email || 'Docente') : 'Incógnita'
+      });
+
       onCreated(pin);
     } catch (e) {
       console.error(e);
@@ -120,14 +142,32 @@ export default function Setup({ onCreated }) {
     }
   }
 
-  // Guardar sin iniciar: crea la sala, la registra en "Salas activas" y va a Mi Panel.
-  async function handleGuardar(actividadesFinales) {
+  // Guardar sin iniciar: crea la sala, la registra en "Salas activas", publica y va a Mi Panel.
+  async function handleGuardar(actividadesFinales, publicarBanco = false) {
     setCargando(true);
     setPaso('creando');
     try {
       if (actividadesFinales.length === 0) throw new Error('Debe haber al menos 1 actividad.');
+
+      // MODO ESPONJA: Loggear cambios
+      if (['tema', 'texto', 'youtube'].includes(modoOrigen)) {
+        logAIFeedback(actividades, actividadesFinales, modoOrigen);
+      }
+
       const pin = await crearSesion(actividadesFinales, tema.trim(), { grado, dificultad });
       guardarSala(user?.uid, { pin, tema: tema.trim() });
+      await guardarContenidoSala(user?.uid, { pin, preguntas: actividadesFinales, tema: tema.trim(), grado, dificultad });
+      
+      // Siempre publicar en el banco
+      await publishToBank(actividadesFinales, {
+        tema: tema.trim() || 'Evaluación',
+        grado,
+        nivel,
+        dificultad,
+        autorUid: publicarBanco ? user?.uid : null,
+        autorNombre: publicarBanco ? (user?.displayName || user?.email || 'Docente') : 'Incógnita'
+      });
+
       navigate('/docente');
     } catch (e) {
       console.error(e);
@@ -143,9 +183,16 @@ export default function Setup({ onCreated }) {
       <main className="min-h-screen px-6 md:px-12 py-12 max-w-4xl mx-auto flex flex-col bg-gameBg animate-fade-in">
         {paso === 'creando' && (
           <div className="fixed inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
-            <div className="text-2xl font-black animate-pulse-soft text-kahootBlue">Creando sala…</div>
+            <div className="text-2xl font-black animate-pulse-soft text-brandPrimary">Guardando sala…</div>
           </div>
         )}
+        
+        {error && (
+          <div className="bg-deny/10 border-l-4 border-deny p-4 rounded-r-lg text-deny font-bold mb-6">
+            Error: {error}
+          </div>
+        )}
+
         <ReviewActivities
           initialActividades={actividades}
           tema={tema}
@@ -165,7 +212,7 @@ export default function Setup({ onCreated }) {
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/')} className="btn-ghost">⌂ Inicio</button>
           <div className="font-black text-xl italic tracking-tighter">
-            Aula<span className="text-kahootBlue">!</span>
+            Aula<span className="text-brandPrimary">!</span>
           </div>
         </div>
         <button
@@ -176,9 +223,9 @@ export default function Setup({ onCreated }) {
         </button>
       </header>
 
-      <section className="bg-white p-8 md:p-12 rounded-3xl shadow-sm animate-slide-up border-t-8 border-kahootBlue">
+      <section className="bg-white p-8 md:p-12 rounded-3xl shadow-sm animate-slide-up border-t-8 border-brandPrimary">
         <h1 className="font-black text-4xl md:text-5xl leading-tight tracking-tight mb-2">
-          Diseña tu <span className="text-kahootBlue">Evaluación</span>
+          Diseña tu <span className="text-brandPrimary">Evaluación</span>
         </h1>
         <p className="text-ink/60 font-bold text-lg mb-8">
           Elige el método de creación y la cantidad de actividades por tipo.
@@ -191,7 +238,7 @@ export default function Setup({ onCreated }) {
             onClick={() => setModoOrigen('tema')}
             className={`flex-1 py-2.5 rounded-xl font-black text-xs md:text-sm transition-all ${
               modoOrigen === 'tema'
-                ? 'bg-white text-kahootBlue shadow-sm'
+                ? 'bg-white text-brandPrimary shadow-sm'
                 : 'text-ink/50 hover:text-ink/80'
             }`}
           >
@@ -202,7 +249,7 @@ export default function Setup({ onCreated }) {
             onClick={() => setModoOrigen('texto')}
             className={`flex-1 py-2.5 rounded-xl font-black text-xs md:text-sm transition-all ${
               modoOrigen === 'texto'
-                ? 'bg-white text-kahootBlue shadow-sm'
+                ? 'bg-white text-brandPrimary shadow-sm'
                 : 'text-ink/50 hover:text-ink/80'
             }`}
           >
@@ -213,7 +260,7 @@ export default function Setup({ onCreated }) {
             onClick={() => setModoOrigen('youtube')}
             className={`flex-1 py-2.5 rounded-xl font-black text-xs md:text-sm transition-all ${
               modoOrigen === 'youtube'
-                ? 'bg-white text-kahootBlue shadow-sm'
+                ? 'bg-white text-brandPrimary shadow-sm'
                 : 'text-ink/50 hover:text-ink/80'
             }`}
           >
@@ -349,7 +396,7 @@ La ley de Ohm establece la relación entre...`}
                 disabled={cargando}
                 className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors ${
                   grado === g
-                    ? 'bg-kahootBlue text-white'
+                    ? 'bg-brandPrimary text-white'
                     : 'bg-ink/5 text-ink/60 hover:bg-ink/10'
                 }`}
               >
@@ -375,7 +422,7 @@ La ley de Ohm establece la relación entre...`}
                 disabled={cargando}
                 className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
                   dificultad === d
-                    ? 'bg-kahootGreen text-white'
+                    ? 'bg-brandSuccess text-white'
                     : 'bg-ink/5 text-ink/60 hover:bg-ink/10'
                 }`}
               >
@@ -422,7 +469,7 @@ La ley de Ohm establece la relación entre...`}
             </label>
             <span className={`font-black text-sm px-3 py-1 rounded-full transition-colors ${
               total > 0
-                ? 'bg-kahootBlue/10 text-kahootBlue'
+                ? 'bg-brandPrimary/10 text-brandPrimary'
                 : 'bg-ink/5 text-ink/40'
             }`}>
               {total} {total === 1 ? 'actividad' : 'actividades'}
@@ -430,7 +477,7 @@ La ley de Ohm establece la relación entre...`}
           </div>
 
           {esGradoTemprano && (
-            <div className="bg-kahootYellow/15 border-l-4 border-kahootYellow p-3 rounded-r-lg text-sm font-bold text-ink/70 mb-4">
+            <div className="bg-brandAccent/15 border-l-4 border-brandAccent p-3 rounded-r-lg text-sm font-bold text-ink/70 mb-4">
               👶 Para {grado}, los niños aún no leen bien: prefiere actividades visuales. La IA usará emojis y poco texto, y hay lectura en voz alta. Los tipos con mucho texto aparecen marcados como poco ideales.
             </div>
           )}
@@ -467,14 +514,14 @@ La ley de Ohm establece la relación entre...`}
             <button
               onClick={handleCrearManual}
               disabled={cargando}
-              className="p-4 rounded-xl font-black uppercase tracking-widest bg-white border-4 border-kahootBlue text-kahootBlue hover:bg-kahootBlue/10 transition-all shadow-sm disabled:opacity-40"
+              className="p-4 rounded-xl font-black uppercase tracking-widest bg-white border-4 border-brandPrimary text-brandPrimary hover:bg-brandPrimary/10 transition-all shadow-sm disabled:opacity-40"
             >
               Crear Manualmente
             </button>
             <button
               onClick={handleGenerar}
               disabled={cargando || total === 0}
-              className="btn-primary px-8 bg-kahootBlue disabled:opacity-40"
+              className="btn-primary px-8 bg-brandPrimary disabled:opacity-40"
             >
               {cargando
                 ? paso === 'generando' ? 'Generando con IA…' : 'Cargando…'
@@ -494,7 +541,7 @@ function ContadorTipo({ label, emoji, desc, colorBorder, value, onMinus, onPlus,
   const activo = value > 0;
   return (
     <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
-      noRecomendado ? 'border-kahootYellow/60 bg-kahootYellow/5' : activo ? `${colorBorder} bg-white shadow-sm` : 'border-mist bg-white'
+      noRecomendado ? 'border-brandAccent/60 bg-brandAccent/5' : activo ? `${colorBorder} bg-white shadow-sm` : 'border-mist bg-white'
     }`}>
       <div className="flex items-center gap-3 min-w-0">
         <span className={`text-2xl shrink-0 ${noRecomendado ? 'opacity-60' : ''}`}>{emoji}</span>
@@ -514,14 +561,14 @@ function ContadorTipo({ label, emoji, desc, colorBorder, value, onMinus, onPlus,
           −
         </button>
         <span className={`w-8 text-center font-black text-lg tabular-nums ${
-          activo ? 'text-kahootBlue' : 'text-ink/30'
+          activo ? 'text-brandPrimary' : 'text-ink/30'
         }`}>
           {value}
         </span>
         <button
           onClick={onPlus}
           disabled={disabled}
-          className="w-8 h-8 rounded-lg bg-kahootBlue/10 text-kahootBlue font-black text-lg leading-none hover:bg-kahootBlue/20 disabled:opacity-30 transition-colors"
+          className="w-8 h-8 rounded-lg bg-brandPrimary/10 text-brandPrimary font-black text-lg leading-none hover:bg-brandPrimary/20 disabled:opacity-30 transition-colors"
         >
           +
         </button>

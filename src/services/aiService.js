@@ -2,6 +2,8 @@
 // AI SERVICE — Generación de actividades via API serverless en Vercel
 // El endpoint /api/generar corre en el servidor con la API key segura (sin CORS).
 // ---------------------------------------------------------------------------
+import { ref, push, set, serverTimestamp } from 'firebase/database';
+import { db, auth } from '../firebase/config.js';
 
 // ---------------------------------------------------------------------------
 // Validadores por tipo — aseguran estructura correcta antes de pasar al editor
@@ -266,4 +268,38 @@ export async function generarPreguntas({ tema, cantidad, nivel = 'bachillerato',
   const arr = await response.json();
   console.log('✅ ¡Preguntas recibidas exitosamente!');
   return parsearYValidar(arr, cantidad);
+}
+
+// ---------------------------------------------------------------------------
+// Entrenamiento de IA - Modo Esponja
+// ---------------------------------------------------------------------------
+export async function logAIFeedback(originalQuizzes, editedQuizzes, origen) {
+  // Solo queremos aprender de las preguntas generadas por IA, no de las manuales
+  if (origen !== 'ia' && origen !== 'tema' && origen !== 'texto' && origen !== 'youtube') return;
+  
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    const origStr = JSON.stringify(originalQuizzes);
+    const editStr = JSON.stringify(editedQuizzes);
+    
+    if (origStr === editStr) return; // No hubo modificaciones manuales, la IA lo hizo perfecto
+    
+    // Guardar la diferencia en la DB
+    const logsRef = ref(db, 'ai_training_logs');
+    const newLogRef = push(logsRef);
+    await set(newLogRef, {
+      uid: user.uid,
+      nombre_docente: user.displayName || user.email || 'Docente',
+      timestamp: serverTimestamp(),
+      origen_generacion: origen,
+      original: originalQuizzes,
+      edited: editedQuizzes
+    });
+    
+    console.log("📝 Feedback humano guardado silenciosamente para entrenar la IA.");
+  } catch (error) {
+    console.error("Error guardando AI feedback:", error);
+  }
 }

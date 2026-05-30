@@ -3,8 +3,8 @@ export const TIPOS = {
     label: 'La Selección Clásica',
     emoji: '🎯',
     desc: 'Opción múltiple · 4 respuestas',
-    colorBorder: 'border-kahootBlue',
-    colorBadge: 'bg-kahootBlue/10 text-kahootBlue',
+    colorBorder: 'border-brandPrimary',
+    colorBadge: 'bg-brandPrimary/10 text-brandPrimary',
     crear: () => ({
       tipo: 'seleccion_clasica',
       pregunta: '',
@@ -16,8 +16,8 @@ export const TIPOS = {
     label: 'Verdad o Mito',
     emoji: '⚖️',
     desc: 'Enunciado verdadero o falso con justificación',
-    colorBorder: 'border-kahootGreen',
-    colorBadge: 'bg-kahootGreen/10 text-kahootGreen',
+    colorBorder: 'border-brandSuccess',
+    colorBadge: 'bg-brandSuccess/10 text-brandSuccess',
     crear: () => ({
       tipo: 'verdad_mito',
       enunciado: '',
@@ -58,7 +58,7 @@ export const TIPOS = {
     label: 'Caza el Intruso',
     emoji: '🔍',
     desc: 'Encuentra el elemento que no pertenece al grupo',
-    colorBorder: 'border-kahootRed',
+    colorBorder: 'border-brandDanger',
     colorBadge: 'bg-red-100 text-red-700',
     crear: () => ({
       tipo: 'caza_intruso',

@@ -3,7 +3,7 @@ import { iniciarSesion, setDuracion, cerrarSesion, obtenerClaves } from '../../s
 import { useNavigate } from 'react-router-dom';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 import LanHostPanel from '../../components/LanHostPanel.jsx';
-import { guardarSala } from '../../utils/savedRooms.js';
+import { guardarSala, guardarContenidoSala } from '../../utils/savedRooms.js';
 import { fusionarLista } from '../../utils/clave.js';
 
 export default function Lobby({ pin, sesion }) {
@@ -20,6 +20,13 @@ export default function Lobby({ pin, sesion }) {
   function handleGuardarYSalir() {
     // La sala sigue viva en Firebase; solo guardamos un puntero para reabrirla.
     guardarSala(sesion.docente_uid, { pin, tema: sesion.tema });
+    guardarContenidoSala(sesion.docente_uid, { 
+      pin, 
+      preguntas: fusionarLista(sesion.preguntas || [], claves), 
+      tema: sesion.tema, 
+      grado: sesion.grado, 
+      dificultad: sesion.dificultad 
+    }).catch(console.error);
     navigate('/docente');
   }
   const estudiantes = Object.entries(sesion.estudiantes || {});
@@ -109,12 +116,12 @@ export default function Lobby({ pin, sesion }) {
             ⌂ Inicio
           </button>
           <div className="font-black text-xl italic tracking-tighter">
-            Aula<span className="text-kahootRed">!</span>
+            Aula<span className="text-brandDanger">!</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setImprimir(true)} className="btn-ghost">🖨️ Imprimir guía</button>
-          <button onClick={handleGuardarYSalir} className="btn-ghost text-kahootBlue hover:bg-kahootBlue/10">
+          <button onClick={handleGuardarYSalir} className="btn-ghost text-brandPrimary hover:bg-brandPrimary/10">
             💾 Guardar y volver a Mi Panel
           </button>
           <button onClick={handleCerrar} className="btn-ghost text-deny hover:bg-deny/10">Cerrar sala</button>
@@ -124,8 +131,8 @@ export default function Lobby({ pin, sesion }) {
       <div className="flex-1 grid lg:grid-cols-[1fr_300px] gap-8">
         
         {/* Proyector PIN Central */}
-        <section className="flex flex-col items-center justify-center bg-white rounded-3xl shadow-sm p-8 text-center border-t-8 border-kahootBlue relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-kahootYellow/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+        <section className="flex flex-col items-center justify-center bg-white rounded-3xl shadow-sm p-8 text-center border-t-8 border-brandPrimary relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-brandAccent/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           
           <p className="font-bold text-ink/50 uppercase tracking-widest mb-4">
             Únete en <span className="text-ink">aula-b1e1b.web.app/jugar</span>
@@ -153,7 +160,7 @@ export default function Lobby({ pin, sesion }) {
                 onClick={() => handleModeChange('segundos')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                   timerMode === 'segundos'
-                    ? 'bg-white text-kahootBlue shadow-sm'
+                    ? 'bg-white text-brandPrimary shadow-sm'
                     : 'text-ink/60 hover:text-ink hover:bg-white/30'
                 }`}
               >
@@ -164,7 +171,7 @@ export default function Lobby({ pin, sesion }) {
                 onClick={() => handleModeChange('minutos')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                   timerMode === 'minutos'
-                    ? 'bg-white text-kahootBlue shadow-sm'
+                    ? 'bg-white text-brandPrimary shadow-sm'
                     : 'text-ink/60 hover:text-ink hover:bg-white/30'
                 }`}
               >
@@ -175,7 +182,7 @@ export default function Lobby({ pin, sesion }) {
                 onClick={() => handleModeChange('sin_limite')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                   timerMode === 'sin_limite'
-                    ? 'bg-white text-kahootBlue shadow-sm'
+                    ? 'bg-white text-brandPrimary shadow-sm'
                     : 'text-ink/60 hover:text-ink hover:bg-white/30'
                 }`}
               >
@@ -192,7 +199,7 @@ export default function Lobby({ pin, sesion }) {
                   max={timerMode === 'minutos' ? 60 : 3600}
                   value={timerValue}
                   onChange={(e) => handleValueChange(Number(e.target.value))}
-                  className="w-24 bg-white rounded-lg font-black text-xl py-2 text-center shadow-sm border border-mist focus:outline-none focus:border-kahootBlue"
+                  className="w-24 bg-white rounded-lg font-black text-xl py-2 text-center shadow-sm border border-mist focus:outline-none focus:border-brandPrimary"
                 />
                 <span className="font-bold text-sm text-ink/50">
                   {timerMode === 'minutos' ? 'min' : 'seg'}
@@ -210,14 +217,14 @@ export default function Lobby({ pin, sesion }) {
           <button
             onClick={() => iniciarSesion(pin)}
             disabled={estudiantes.length === 0}
-            className="btn-primary text-xl px-12 py-6 bg-kahootGreen w-full max-w-sm"
+            className="btn-primary text-xl px-12 py-6 bg-brandSuccess w-full max-w-sm"
           >
             ¡Empezar!
           </button>
         </section>
 
         {/* Panel lateral Estudiantes */}
-        <section className="bg-white rounded-3xl shadow-sm flex flex-col overflow-hidden border-t-8 border-kahootRed">
+        <section className="bg-white rounded-3xl shadow-sm flex flex-col overflow-hidden border-t-8 border-brandDanger">
           <div className="p-6 border-b border-mist bg-mist/10 flex justify-between items-center">
             <h2 className="font-black text-xl">Jugadores</h2>
             <div className="bg-ink text-white font-black text-xl px-4 py-1 rounded-full">
@@ -249,7 +256,7 @@ export default function Lobby({ pin, sesion }) {
       {mostrarConfirm && (
         <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col items-center text-center animate-scale-in">
-            <div className="w-16 h-16 bg-kahootRed/10 rounded-full flex items-center justify-center text-3xl mb-6">
+            <div className="w-16 h-16 bg-brandDanger/10 rounded-full flex items-center justify-center text-3xl mb-6">
               ⚠️
             </div>
             <h3 className="font-black text-2xl mb-3 text-ink">¿Cerrar y borrar sala?</h3>
@@ -259,8 +266,8 @@ export default function Lobby({ pin, sesion }) {
             
             {confirmando ? (
               <div className="flex flex-col items-center gap-3 py-2 w-full">
-                <div className="w-8 h-8 border-4 border-kahootRed border-t-transparent rounded-full animate-spin" />
-                <span className="font-bold text-sm text-kahootRed">Cerrando sala…</span>
+                <div className="w-8 h-8 border-4 border-brandDanger border-t-transparent rounded-full animate-spin" />
+                <span className="font-bold text-sm text-brandDanger">Cerrando sala…</span>
               </div>
             ) : (
               <div className="flex gap-3 w-full">
@@ -272,7 +279,7 @@ export default function Lobby({ pin, sesion }) {
                 </button>
                 <button
                   onClick={executeCerrar}
-                  className="flex-1 btn-primary bg-kahootRed hover:bg-kahootRed/90 py-3 text-white font-black"
+                  className="flex-1 btn-primary bg-brandDanger hover:bg-brandDanger/90 py-3 text-white font-black"
                 >
                   Sí, Cerrar
                 </button>

@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { deterministicShuffle } from '../utils/shuffle.js';
 import { ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../utils/clave.js';
+import { exportarAWord } from '../utils/wordExport.js';
 
 const LETRAS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const ENCABEZADO_KEY = 'aula_encabezado'; // institución + docente recordados
@@ -51,6 +52,23 @@ export default function WorksheetPrint({ actividades = [], tema = '', grado = ''
     setTimeout(() => window.print(), 50);
   }
 
+  async function descargarWord() {
+    try {
+      const blob = await exportarAWord(actividades, {
+        titulo, grado, dificultad, docente: encabezado.docente, institucion: encabezado.institucion, esClave, notas
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${titulo || 'Actividades'}${esClave ? '_Clave' : ''}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generando Word:', error);
+      alert('Hubo un error al generar el documento de Word.');
+    }
+  }
+
   const esClave = modo === 'clave';
 
   return createPortal(
@@ -83,12 +101,20 @@ export default function WorksheetPrint({ actividades = [], tema = '', grado = ''
           </button>
         </div>
 
-        <button
-          onClick={imprimir}
-          className="bg-kahootGreen hover:bg-kahootGreen/90 px-5 py-2 rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-sm"
-        >
-          🖨️ Imprimir / PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={descargarWord}
+            className="bg-brandPrimary hover:bg-brandPrimary/90 px-5 py-2 rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-sm text-white"
+          >
+            📄 Word
+          </button>
+          <button
+            onClick={imprimir}
+            className="bg-brandSuccess hover:bg-brandSuccess/90 px-5 py-2 rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-sm text-white"
+          >
+            🖨️ Imprimir / PDF
+          </button>
+        </div>
       </div>
 
       {/* Hoja (esto sí se imprime) */}
@@ -241,7 +267,7 @@ function ActividadImprimible({ actividad, numero, esClave }) {
 
 // --- Helpers visuales ---
 function Enunciado({ children }) {
-  return <p className="font-bold text-[15px] leading-snug mb-2">{children}</p>;
+  return <p className="font-bold text-[15px] leading-snug mb-2 outline-none hover:bg-blue-50 transition-colors cursor-text rounded px-1" contentEditable suppressContentEditableWarning>{children}</p>;
 }
 const circulo = 'inline-block w-4 h-4 border-2 border-gray-700 rounded-full mr-2 align-middle';
 const cuadro = 'inline-block w-4 h-4 border-2 border-gray-700 rounded-[3px] mr-2 align-middle';
@@ -258,7 +284,7 @@ function Seleccion({ actividad, esClave }) {
             <li key={i} className={`text-[14px] ${correcta ? 'font-black' : ''}`}>
               <span className={correcta ? 'inline-block w-4 h-4 rounded-full bg-gray-800 mr-2 align-middle' : circulo} />
               <span className="font-bold mr-1">{LETRAS[i]})</span>
-              {op}
+              <span className="outline-none hover:bg-blue-50 transition-colors cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{op}</span>
               {correcta && <span className="ml-2">✓</span>}
             </li>
           );
@@ -272,7 +298,7 @@ function Seleccion({ actividad, esClave }) {
 function Detective({ actividad, esClave }) {
   return (
     <>
-      <div className="border border-gray-400 rounded-md p-3 mb-2 bg-gray-50 text-[14px] leading-relaxed italic">
+      <div className="border border-gray-400 rounded-md p-3 mb-2 bg-gray-50 text-[14px] leading-relaxed italic outline-none hover:bg-blue-50 transition-colors cursor-text" contentEditable suppressContentEditableWarning>
         {actividad.pasaje}
       </div>
       <Seleccion actividad={actividad} esClave={esClave} />
@@ -289,11 +315,11 @@ function Binario({ actividad, esClave, a, b, valorA }) {
       <div className="flex gap-8 ml-1 text-[14px]">
         <span className={esClave && esA ? 'font-black' : ''}>
           <span className={esClave && esA ? 'inline-block w-4 h-4 bg-gray-800 rounded-[3px] mr-2 align-middle' : cuadro} />
-          {a}{esClave && esA && ' ✓'}
+          <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{a}</span>{esClave && esA && ' ✓'}
         </span>
         <span className={esClave && !esA ? 'font-black' : ''}>
           <span className={esClave && !esA ? 'inline-block w-4 h-4 bg-gray-800 rounded-[3px] mr-2 align-middle' : cuadro} />
-          {b}{esClave && !esA && ' ✓'}
+          <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{b}</span>{esClave && !esA && ' ✓'}
         </span>
       </div>
       {esClave && actividad.explicacion && (
@@ -313,7 +339,7 @@ function CazaIntruso({ actividad, esClave }) {
         {actividad.elementos.map((el, i) => {
           const intruso = esClave && i === actividad.intruso_idx;
           return (
-            <span key={i} className={intruso ? 'font-black px-2 border-2 border-gray-800 rounded-full' : ''}>
+            <span key={i} className={`outline-none hover:bg-blue-50 cursor-text px-1 rounded ${intruso ? 'font-black px-2 border-2 border-gray-800 rounded-full' : ''}`} contentEditable suppressContentEditableWarning>
               {el}{intruso && ' ✓'}
             </span>
           );
@@ -345,7 +371,7 @@ function Orden({ actividad, esClave, numero, tipo }) {
             <span className="inline-block w-7 border-b border-gray-500 text-center font-black mr-2 align-middle">
               {esClave ? origIdx + 1 : ' '}
             </span>
-            {item}
+            <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{item}</span>
           </li>
         ))}
       </ul>
@@ -376,14 +402,14 @@ function Parejas({ actividad, esClave, numero }) {
                 <span className="inline-block w-7 border-b border-gray-500 text-center font-black mr-2 align-middle">
                   {esClave ? letraCorrecta : ' '}
                 </span>
-                <span className="font-bold">{i + 1}.</span> {par.izquierda}
+                <span className="font-bold">{i + 1}.</span> <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{par.izquierda}</span>
               </li>
             );
           })}
         </ul>
         <ul className="space-y-1.5">
           {derechas.map(({ item }, i) => (
-            <li key={i}><span className="font-bold mr-1">{LETRAS[i]})</span> {item}</li>
+            <li key={i}><span className="font-bold mr-1">{LETRAS[i]})</span> <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{item}</span></li>
           ))}
         </ul>
       </div>

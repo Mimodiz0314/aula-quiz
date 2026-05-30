@@ -47,8 +47,8 @@ export default function LanHostPanel({ pin }) {
     const url = buildJoinUrl(info.ip, info.port, pin);
     const code = buildShortCode(info.ip, info.port, pin);
     return (
-      <div className="w-full max-w-md mt-6 bg-mist/20 p-5 rounded-2xl border border-kahootGreen/40 text-center">
-        <p className="font-black text-kahootGreen uppercase tracking-widest text-sm mb-3">
+      <div className="w-full max-w-md mt-6 bg-mist/20 p-5 rounded-2xl border border-brandSuccess/40 text-center">
+        <p className="font-black text-brandSuccess uppercase tracking-widest text-sm mb-3">
           📡 Red local activa (sin internet)
         </p>
         {qr && <img src={qr} alt="QR para unirse" className="mx-auto rounded-xl bg-white p-2" width={220} height={220} />}
@@ -70,7 +70,7 @@ export default function LanHostPanel({ pin }) {
       <button
         onClick={activar}
         disabled={estado === 'iniciando'}
-        className="btn-primary w-full bg-kahootBlue"
+        className="btn-primary w-full bg-brandPrimary"
       >
         {estado === 'iniciando' ? 'Iniciando red local…' : '📡 Activar red local (sin internet)'}
       </button>

@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion, obtenerClaves, eliminarSesion } from '../../services/sessionService.js';
 import { fusionarLista } from '../../utils/clave.js';
-import { listarSalasGuardadas, quitarSala, reemplazarSalas } from '../../utils/savedRooms.js';
+import { listarSalasGuardadas, quitarSala, reemplazarSalas, obtenerContenidoSala } from '../../utils/savedRooms.js';
 import { isOfflineEnabled } from '../../services/featureFlag.js';
 import { isOnline } from '../../services/connectivity.js';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 import StudentPreview from '../../components/StudentPreview.jsx';
+import { exportToWord } from '../../utils/exportWorksheet.js';
 
 export default function TeacherDashboard() {
   const { user, userData, logout, cambiarMiPassword } = useAuth();
@@ -23,6 +24,9 @@ export default function TeacherDashboard() {
   const [sesionDetalle, setSesionDetalle] = useState(null); // sesión seleccionada para ver notas
   const [reutilizando, setReutilizando] = useState(false);
   const [confirmDeleteKey, setConfirmDeleteKey] = useState(null);
+  const [modalDescargar, setModalDescargar] = useState(null); // sesión seleccionada para descargar
+  const [filtroGrado, setFiltroGrado] = useState(''); // Filtro por grado/nivel historial
+  const [filtroGradoActivas, setFiltroGradoActivas] = useState(''); // Filtro para salas activas
 
   useEffect(() => {
     obtenerHistorialDocente()
@@ -40,10 +44,22 @@ export default function TeacherDashboard() {
       const guardadas = listarSalasGuardadas(uid);
       const verificadas = [];
       for (const sala of guardadas) {
-        try {
-          const s = await obtenerSesion(sala.pin);
-          if (s) verificadas.push({ pin: sala.pin, tema: s.tema || sala.tema || '', estado: s.estado_actual, grado: s.grado || '', dificultad: s.dificultad || '' });
-        } catch { /* ignore */ }
+        let s = null;
+        try { s = await obtenerSesion(sala.pin); } catch { /* ignore */ }
+        
+        if (!s && isOfflineEnabled() && !isOnline()) {
+          s = await obtenerContenidoSala(uid, sala.pin);
+        }
+
+        if (s) {
+          verificadas.push({ 
+            pin: sala.pin, 
+            tema: s.tema || sala.tema || '', 
+            estado: s.estado_actual || 'Guardada local', 
+            grado: s.grado || '', 
+            dificultad: s.dificultad || '' 
+          });
+        }
       }
       if (!activo) return;
       // Auto-limpieza: solo podamos cuando estamos seguros (online o modo
@@ -58,6 +74,16 @@ export default function TeacherDashboard() {
     return () => { activo = false; };
   }, [user?.uid]);
 
+  const historialFiltrado = useMemo(() => {
+    if (!filtroGrado) return historial;
+    return historial.filter(h => h.grado?.trim() === filtroGrado);
+  }, [historial, filtroGrado]);
+
+  const salasActivasFiltradas = useMemo(() => {
+    if (!filtroGradoActivas) return salasActivas;
+    return salasActivas.filter(s => s.grado?.trim() === filtroGradoActivas);
+  }, [salasActivas, filtroGradoActivas]);
+
   function quitarDeActivas(pin) {
     quitarSala(user?.uid, pin);
     setSalasActivas(prev => prev.filter(s => s.pin !== pin));
@@ -66,9 +92,31 @@ export default function TeacherDashboard() {
   // Carga la sala completa (preguntas fusionadas con su clave) para previsualizar,
   // imprimir, editar o reutilizar una SALA ACTIVA.
   async function cargarSalaCompleta(pin) {
-    const s = await obtenerSesion(pin);
-    if (!s) { alert('Esta sala ya no existe.'); setSalasActivas(prev => prev.filter(x => x.pin !== pin)); return null; }
-    const claves = await obtenerClaves(pin);
+    let s = null;
+    try { s = await obtenerSesion(pin); } catch {}
+
+    if (!s && isOfflineEnabled() && !isOnline()) {
+      const offline = await obtenerContenidoSala(user?.uid, pin);
+      if (offline) {
+        return {
+          pin,
+          preguntas: offline.preguntas || [],
+          tema: offline.tema || '',
+          grado: offline.grado || '',
+          dificultad: offline.dificultad || '',
+        };
+      }
+    }
+
+    if (!s) { 
+      alert('Esta sala ya no existe.'); 
+      setSalasActivas(prev => prev.filter(x => x.pin !== pin)); 
+      return null; 
+    }
+
+    let claves = null;
+    try { claves = await obtenerClaves(pin); } catch {}
+
     return {
       pin,
       preguntas: fusionarLista(s.preguntas || [], claves),
@@ -82,9 +130,9 @@ export default function TeacherDashboard() {
     const full = await cargarSalaCompleta(pin);
     if (full) setPreview(full);
   }
-  async function printSala(pin) {
+  async function downloadSala(pin) {
     const full = await cargarSalaCompleta(pin);
-    if (full) setImprimir(full);
+    if (full) setModalDescargar(full);
   }
   async function editSala(pin) {
     const full = await cargarSalaCompleta(pin);
@@ -171,7 +219,7 @@ export default function TeacherDashboard() {
       <header className="bg-white border-b border-mist px-6 md:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="font-black text-2xl italic tracking-tighter">
-            Aula<span className="text-kahootBlue">!</span>
+            Aula<span className="text-brandPrimary">!</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -207,42 +255,86 @@ export default function TeacherDashboard() {
             value={historial.length > 0
               ? (historial.reduce((s, h) => s + (h.promedio_grupo || 0), 0) / historial.length).toFixed(1)
               : '—'}
-            color="text-kahootGreen"
+            color="text-brandSuccess"
           />
           <StatCard
             label="Estudiantes evaluados"
             value={historial.reduce((s, h) => s + (h.total_estudiantes || 0), 0)}
-            color="text-kahootBlue"
+            color="text-brandPrimary"
           />
         </div>
 
-        {/* Acción principal */}
-        <button
-          onClick={() => navigate('/docente/nueva')}
-          className="w-full p-8 mb-10 bg-kahootBlue text-white rounded-3xl border-b-8 border-kahootBlue/30 hover:-translate-y-1 transition-all shadow-lg text-left group"
-        >
-          <div className="font-bold text-sm tracking-widest uppercase opacity-70 mb-1">
-            Nueva evaluación
-          </div>
-          <div className="font-black text-3xl md:text-4xl">
-            Crear Juego con IA
-          </div>
-        </button>
-
-        {/* Salas activas (guardadas para más tarde) */}
-        {salasActivas.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden mb-10">
-            <div className="px-8 py-6 border-b border-mist flex items-center justify-between">
-              <h2 className="font-black text-xl">Salas activas</h2>
-              <span className="text-sm font-bold text-ink/40">
-                {salasActivas.length} guardada{salasActivas.length !== 1 ? 's' : ''}
-              </span>
+        {/* Acciones principales */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          <button
+            onClick={() => navigate('/docente/nueva')}
+            className="w-full p-6 md:p-8 bg-brandPrimary text-white rounded-3xl border-b-8 border-brandPrimary/30 hover:-translate-y-1 transition-all shadow-lg text-left group"
+          >
+            <div className="font-bold text-sm tracking-widest uppercase opacity-70 mb-1">
+              Nueva evaluación
             </div>
+            <div className="font-black text-2xl md:text-3xl">
+              Crear Juego
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/docente/banco')}
+            className="w-full p-6 md:p-8 bg-brandSecondary text-white rounded-3xl border-b-8 border-brandSecondary/30 hover:-translate-y-1 transition-all shadow-lg text-left group"
+          >
+            <div className="font-bold text-sm tracking-widest uppercase opacity-70 mb-1">
+              Comunidad
+            </div>
+            <div className="font-black text-2xl md:text-3xl">
+              Banco de Actividades
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/docente/foro')}
+            className="w-full p-6 md:p-8 bg-brandAccent text-white rounded-3xl border-b-8 border-brandAccent/30 hover:-translate-y-1 transition-all shadow-lg text-left group"
+          >
+            <div className="font-bold text-sm tracking-widest uppercase opacity-70 mb-1">
+              Discusión
+            </div>
+            <div className="font-black text-2xl md:text-3xl">
+              Foro Docente
+            </div>
+          </button>
+        </div>
+
+        {/* Salas activas */}
+        <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden relative mb-10">
+          <div className="px-8 py-6 border-b border-mist flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-black text-xl">Salas activas</h2>
+              <span className="text-sm font-bold text-ink/40">{salasActivas.length} guardadas</span>
+            </div>
+            {salasActivas.length > 0 && (
+              <div className="flex gap-2 w-full sm:w-auto">
+                <select
+                  className="field py-2 px-4 rounded-xl bg-gameBg border-none text-sm font-bold flex-1 sm:flex-none text-ink/70 focus:text-ink transition-colors"
+                  value={filtroGradoActivas}
+                  onChange={e => setFiltroGradoActivas(e.target.value)}
+                >
+                  <option value="">Todos los grados/grupos</option>
+                  {[...new Set(salasActivas.map(s => s.grado?.trim()).filter(Boolean))].sort().map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+          {salasActivasFiltradas.length === 0 ? (
+            <div className="py-12 text-center text-ink/40 font-bold">
+              {salasActivas.length > 0 ? 'No hay salas activas que coincidan con el filtro.' : 'No tienes salas activas en este momento.'}
+            </div>
+          ) : (
             <div className="divide-y divide-mist/50">
-              {salasActivas.map((s) => (
+              {salasActivasFiltradas.map((s) => (
                 <div key={s.pin} className="px-8 py-5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-5 min-w-0">
-                    <span className="font-black text-2xl text-kahootBlue tracking-wider shrink-0">{s.pin}</span>
+                    <span className="font-black text-2xl text-brandPrimary tracking-wider shrink-0">{s.pin}</span>
                     <div className="min-w-0">
                       {s.tema && <div className="font-black text-base text-ink truncate">{s.tema}</div>}
                       <div className="font-bold text-xs text-ink/40 capitalize mb-1">
@@ -254,13 +346,13 @@ export default function TeacherDashboard() {
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                     <button
                       onClick={() => navigate(`/docente/sesion/${s.pin}`)}
-                      className="btn-primary bg-kahootGreen text-white"
+                      className="btn-primary bg-brandSuccess text-white"
                     >
                       Abrir sala
                     </button>
-                    <button onClick={() => previewSala(s.pin)} title="Vista previa (como la ve el estudiante)" className="p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all">👁️</button>
-                    <button onClick={() => printSala(s.pin)} title="Imprimir / PDF" className="p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all">🖨️</button>
-                    <button onClick={() => editSala(s.pin)} title="Editar cuestionario" className="p-2 text-kahootBlue hover:bg-kahootBlue/10 rounded-xl transition-all">✏️</button>
+                    <button onClick={() => previewSala(s.pin)} title="Vista previa" className="p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all">👁️</button>
+                    <button onClick={() => downloadSala(s.pin)} title="Descargar" className="p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all">⬇️</button>
+                    <button onClick={() => editSala(s.pin)} title="Editar cuestionario" className="p-2 text-brandPrimary hover:bg-brandPrimary/10 rounded-xl transition-all">✏️</button>
                     <button onClick={() => reuseSala(s.pin)} title="Reutilizar (crear sala nueva)" className="p-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-all">🔄</button>
                     <button onClick={() => setConfirmDeleteRoom(s.pin)} title="Borrar sala" className="p-2 text-deny hover:bg-deny/10 rounded-xl transition-all">🗑️</button>
                     <button onClick={() => quitarDeActivas(s.pin)} title="Quitar de la lista (no borra la sala)" className="p-2 text-ink/30 hover:text-ink/60 rounded-xl transition-all">✕</button>
@@ -268,41 +360,63 @@ export default function TeacherDashboard() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Progreso por grado */}
         {historial.length > 0 && <ProgresoPorGrado historial={historial} />}
 
         {/* Historial de sesiones */}
         <div className="bg-white rounded-3xl shadow-sm border border-mist/50 overflow-hidden">
-          <div className="px-8 py-6 border-b border-mist flex items-center justify-between">
-            <h2 className="font-black text-xl">Sesiones anteriores</h2>
-            <span className="text-sm font-bold text-ink/40">{historial.length} registros</span>
+          <div className="px-8 py-6 border-b border-mist flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-black text-xl">Sesiones anteriores</h2>
+              <span className="text-sm font-bold text-ink/40">{historial.length} registros</span>
+            </div>
+            
+            {/* Filtros */}
+            {historial.length > 0 && (
+              <div className="flex gap-2 w-full sm:w-auto">
+                <select
+                  className="field py-2 px-4 rounded-xl bg-gameBg border-none text-sm font-bold flex-1 sm:flex-none text-ink/70 focus:text-ink transition-colors"
+                  value={filtroGrado}
+                  onChange={e => setFiltroGrado(e.target.value)}
+                >
+                  <option value="">Todos los grados/grupos</option>
+                  {[...new Set(historial.map(h => h.grado?.trim()).filter(Boolean))].sort().map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {cargandoHistorial ? (
             <div className="py-12 text-center font-bold text-ink/40 animate-pulse">
               Cargando…
             </div>
-          ) : historial.length === 0 ? (
+          ) : historialFiltrado.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="font-black text-lg text-ink/30 mb-1">Sin sesiones aún</p>
-              <p className="font-bold text-sm text-ink/40">Crea tu primera evaluación con el botón de arriba.</p>
+              <p className="font-black text-lg text-ink/30 mb-1">
+                {historial.length > 0 ? 'No hay sesiones que coincidan con el filtro' : 'Sin sesiones aún'}
+              </p>
+              {historial.length === 0 && (
+                <p className="font-bold text-sm text-ink/40">Crea tu primera evaluación con el botón de arriba.</p>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-mist/50">
-              {historial.map((s) => (
-                <SesionFila
-                  key={s.key}
-                  sesion={s}
-                  onClick={() => setSesionDetalle(s)}
-                  onDelete={handleEliminar}
-                  onEdit={handleEdit}
-                  onReuse={handleReuse}
-                  onPreview={() => setPreview(s)}
-                  onPrint={() => setImprimir(s)}
-                />
+              {historialFiltrado.map((s) => (
+                  <SesionFila
+                    key={s.key}
+                    sesion={s}
+                    onClick={() => setSesionDetalle(s)}
+                    onDelete={handleEliminar}
+                    onEdit={handleEdit}
+                    onReuse={handleReuse}
+                    onPreview={() => setPreview(s)}
+                    onDownload={() => setModalDescargar(s)}
+                  />
               ))}
             </div>
           )}
@@ -316,7 +430,7 @@ export default function TeacherDashboard() {
           onClose={() => setSesionDetalle(null)}
           onDelete={handleEliminar}
           onPreview={() => { setPreview(sesionDetalle); setSesionDetalle(null); }}
-          onPrint={() => { setImprimir(sesionDetalle); setSesionDetalle(null); }}
+          onDownload={() => { setModalDescargar(sesionDetalle); setSesionDetalle(null); }}
         />
       )}
 
@@ -327,6 +441,45 @@ export default function TeacherDashboard() {
           tema={preview.tema || ''}
           onClose={() => setPreview(null)}
         />
+      )}
+
+      {/* Modal: Descargar Actividad */}
+      {modalDescargar && (
+        <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setModalDescargar(null)}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl flex flex-col items-center text-center animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-brandPrimary/10 rounded-full flex items-center justify-center text-3xl mb-4">⬇️</div>
+            <h3 className="font-black text-2xl mb-1 text-ink">Descargar</h3>
+            <p className="font-bold text-ink/50 text-sm mb-6 leading-relaxed">
+              Selecciona el formato en el que deseas descargar el cuestionario "{modalDescargar.tema || 'Actividad'}"
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <button
+                onClick={() => {
+                  setImprimir(modalDescargar);
+                  setModalDescargar(null);
+                }}
+                className="w-full py-4 rounded-xl font-black bg-brandPrimary text-white hover:bg-brandPrimary/90 transition-colors shadow-md flex items-center justify-center gap-2"
+              >
+                📄 Descargar en PDF (Imprimir)
+              </button>
+              <button
+                onClick={() => {
+                  exportToWord(modalDescargar.preguntas || [], modalDescargar.tema, modalDescargar.grado);
+                  setModalDescargar(null);
+                }}
+                className="w-full py-4 rounded-xl font-black bg-[#2B579A] text-white hover:bg-[#1E3E6E] transition-colors shadow-md flex items-center justify-center gap-2"
+              >
+                📝 Descargar en Word (.docx)
+              </button>
+              <button
+                onClick={() => setModalDescargar(null)}
+                className="mt-3 w-full py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors text-ink/60"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Guía imprimible / PDF */}
@@ -420,7 +573,7 @@ export default function TeacherDashboard() {
 // ---------------------------------------------------------------------------
 // Fila de sesión en el historial
 // ---------------------------------------------------------------------------
-function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onPrint }) {
+function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onDownload }) {
   const nEstudiantes = sesion.total_estudiantes || 0;
   const promedio = sesion.promedio_grupo;
   const fecha = sesion.cerrada_en
@@ -435,7 +588,7 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onP
       className="w-full px-8 py-5 flex items-center justify-between gap-4 hover:bg-gameBg/50 transition-colors text-left cursor-pointer group"
     >
       <div className="flex items-center gap-5 min-w-0">
-        <span className="font-black text-2xl text-kahootBlue tracking-wider shrink-0">
+        <span className="font-black text-2xl text-brandPrimary tracking-wider shrink-0">
           {sesion.pin}
         </span>
         <div className="min-w-0">
@@ -454,7 +607,7 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onP
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
         {promedio !== undefined && (
           <span className={`font-black text-base md:text-xl shrink-0 ${
-            promedio >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'
+            promedio >= 3.0 ? 'text-brandSuccess' : 'text-brandDanger'
           }`}>
             Prom. {promedio}
           </span>
@@ -473,19 +626,19 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onP
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onPrint(sesion);
+              onDownload(sesion);
             }}
             className="p-1.5 md:p-2 text-ink/60 hover:bg-ink/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
-            title="Imprimir / PDF"
+            title="Descargar"
           >
-            🖨️
+            ⬇️
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(sesion);
             }}
-            className="p-1.5 md:p-2 text-kahootBlue hover:bg-kahootBlue/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
+            className="p-1.5 md:p-2 text-brandPrimary hover:bg-brandPrimary/10 rounded-xl transition-all md:opacity-0 group-hover:opacity-100 focus:opacity-100"
             title="Editar cuestionario"
           >
             ✏️
@@ -522,7 +675,7 @@ function SesionFila({ sesion, onClick, onDelete, onEdit, onReuse, onPreview, onP
 // ---------------------------------------------------------------------------
 // Modal: Tabla de notas de una sesión archivada
 // ---------------------------------------------------------------------------
-function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
+function ModalNotas({ sesion, onClose, onDelete, onPreview, onDownload }) {
   const navigate = useNavigate();
   const [lanzando, setLanzando] = useState(false);
   const resultados = sesion.resultados || [];
@@ -583,7 +736,7 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
         <div className="px-8 py-6 border-b border-mist flex items-start justify-between gap-4">
           <div>
             <div className="font-bold text-xs tracking-widest uppercase text-ink/40 mb-1">Sesión PIN</div>
-            <div className="font-black text-3xl text-kahootBlue">{sesion.pin}</div>
+            <div className="font-black text-3xl text-brandPrimary">{sesion.pin}</div>
             {sesion.tema && (
               <div className="font-black text-lg text-ink mt-1">
                 Tema: {sesion.tema}
@@ -592,7 +745,7 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
             <div className="mt-1.5"><MetaBadges grado={sesion.grado} dificultad={sesion.dificultad} /></div>
             <div className="font-bold text-sm text-ink/50 mt-1">
               {sesion.total_preguntas ?? 0} preguntas · {resultados.length} estudiantes ·
-              Prom. <span className={sesion.promedio_grupo >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'}>
+              Prom. <span className={sesion.promedio_grupo >= 3.0 ? 'text-brandSuccess' : 'text-brandDanger'}>
                 {sesion.promedio_grupo ?? '—'}
               </span>
               · Aprobados {aprobados}/{resultados.length}
@@ -625,7 +778,7 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
                     </td>
                     <td className="py-3 px-2 text-right">
                       <span className={`font-black text-xl ${
-                        r.nota >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'
+                        r.nota >= 3.0 ? 'text-brandSuccess' : 'text-brandDanger'
                       }`}>
                         {r.nota.toFixed(1)}
                       </span>
@@ -658,20 +811,20 @@ function ModalNotas({ sesion, onClose, onDelete, onPreview, onPrint }) {
               👁️ Vista previa
             </button>
             <button
-              onClick={onPrint}
+              onClick={onDownload}
               className="btn-secondary flex items-center gap-2 text-ink/75 hover:bg-mist/10"
             >
-              🖨️ Imprimir
+              ⬇️ Descargar
             </button>
             <button
               onClick={exportarCSV}
-              className="btn-secondary flex items-center gap-2 text-kahootGreen border-kahootGreen/30 hover:bg-kahootGreen/5"
+              className="btn-secondary flex items-center gap-2 text-brandSuccess border-brandSuccess/30 hover:bg-brandSuccess/5"
             >
               📊 Exportar CSV
             </button>
             <button
               onClick={republicarCuestionario}
-              className="btn-secondary flex items-center gap-2 text-kahootBlue border-kahootBlue/30 hover:bg-kahootBlue/5"
+              className="btn-secondary flex items-center gap-2 text-brandPrimary border-brandPrimary/30 hover:bg-brandPrimary/5"
             >
               ✏️ Editar
             </button>
@@ -765,7 +918,7 @@ function ModalMiPassword({ onClose, cambiarMiPassword }) {
             />
           </Campo>
           {error && <p className="text-deny font-bold text-sm">{error}</p>}
-          {exito && <p className="text-kahootGreen font-bold text-sm">{exito}</p>}
+          {exito && <p className="text-brandSuccess font-bold text-sm">{exito}</p>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors">
@@ -843,10 +996,10 @@ function BloqueGrado({ grado, sesiones }) {
         </div>
         <div className="flex items-center gap-3 text-sm font-bold">
           <span className="text-ink/50">
-            Promedio: <span className={avg >= 3 ? 'text-kahootGreen' : 'text-kahootRed'}>{avg.toFixed(1)}</span>
+            Promedio: <span className={avg >= 3 ? 'text-brandSuccess' : 'text-brandDanger'}>{avg.toFixed(1)}</span>
           </span>
           {sesiones.length > 1 && (
-            <span className={delta > 0 ? 'text-kahootGreen' : delta < 0 ? 'text-kahootRed' : 'text-ink/40'}>
+            <span className={delta > 0 ? 'text-brandSuccess' : delta < 0 ? 'text-brandDanger' : 'text-ink/40'}>
               {delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : '– 0'}
             </span>
           )}
@@ -869,7 +1022,7 @@ function BloqueGrado({ grado, sesiones }) {
             >
               <span className="text-[11px] font-black text-ink/60 mb-1">{p}</span>
               <div
-                className={`w-full rounded-t-md transition-all ${aprob ? 'bg-kahootGreen' : 'bg-kahootRed'}`}
+                className={`w-full rounded-t-md transition-all ${aprob ? 'bg-brandSuccess' : 'bg-brandDanger'}`}
                 style={{ height: `${altura}%` }}
               />
               <span className="text-[9px] font-bold text-ink/40 mt-1 truncate w-full text-center">
@@ -889,12 +1042,12 @@ function MetaBadges({ grado, dificultad }) {
   return (
     <span className="inline-flex gap-1.5 flex-wrap align-middle">
       {grado && (
-        <span className="px-2 py-0.5 rounded-full bg-kahootBlue/10 text-kahootBlue text-[11px] font-black">
+        <span className="px-2 py-0.5 rounded-full bg-brandPrimary/10 text-brandPrimary text-[11px] font-black">
           {grado}
         </span>
       )}
       {dificultad && (
-        <span className="px-2 py-0.5 rounded-full bg-kahootGreen/10 text-kahootGreen text-[11px] font-black">
+        <span className="px-2 py-0.5 rounded-full bg-brandSuccess/10 text-brandSuccess text-[11px] font-black">
           {dificultad}
         </span>
       )}

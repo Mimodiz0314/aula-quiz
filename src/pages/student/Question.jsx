@@ -31,8 +31,8 @@ export function hablar(texto) {
     window.speechSynthesis.speak(u);
   } catch { /* navegador sin soporte: se ignora */ }
 }
-const CATEGORY_COLORS = ['bg-kahootBlue text-white', 'bg-kahootGreen text-white'];
-const CATEGORY_BORDERS = ['border-kahootBlue', 'border-kahootGreen'];
+const CATEGORY_COLORS = ['bg-brandPrimary text-white', 'bg-brandSuccess text-white'];
+const CATEGORY_BORDERS = ['border-brandPrimary', 'border-brandSuccess'];
 
 // ---------------------------------------------------------------------------
 // Componente raíz
@@ -88,7 +88,7 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
           {idx + 1} de {total}
         </div>
         <div className={`font-black tabular-nums text-3xl md:text-4xl bg-white w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full shadow-md ${
-          !bloqueado && !esSinLimite && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
+          !bloqueado && !esSinLimite && restante <= 5 ? 'text-brandDanger animate-pulse' : 'text-ink'
         }`}>
           {bloqueado ? '0' : (esSinLimite ? '∞' : restante)}
         </div>
@@ -114,8 +114,8 @@ export function ActivityStudentView({ actividad, bloqueado, yaRespondio, miRespu
         <BinarioUI {...props}
           enunciado={actividad.enunciado}
           opciones={[
-            { val: 'verdad',    label: '✅ Verdad',    color: 'bg-kahootGreen' },
-            { val: 'mito',      label: '❌ Mito',      color: 'bg-kahootRed'   },
+            { val: 'verdad',    label: '✅ Verdad',    color: 'bg-brandSuccess' },
+            { val: 'mito',      label: '❌ Mito',      color: 'bg-brandDanger'   },
           ]}
         />
       )}
@@ -123,8 +123,8 @@ export function ActivityStudentView({ actividad, bloqueado, yaRespondio, miRespu
         <BinarioUI {...props}
           enunciado={actividad.enunciado}
           opciones={[
-            { val: 'real',      label: '✅ Real',      color: 'bg-kahootBlue'  },
-            { val: 'inventado', label: '🎭 Inventado', color: 'bg-kahootRed'   },
+            { val: 'real',      label: '✅ Real',      color: 'bg-brandPrimary'  },
+            { val: 'inventado', label: '🎭 Inventado', color: 'bg-brandDanger'   },
           ]}
         />
       )}
@@ -164,7 +164,7 @@ function BotonConfirmar({ onClick, disabled, label = 'Confirmar respuesta' }) {
       <button
         onClick={onClick}
         disabled={disabled}
-        className="btn-primary bg-kahootGreen px-10 disabled:opacity-40"
+        className="btn-primary bg-brandSuccess px-10 disabled:opacity-40"
       >
         {label}
       </button>
@@ -187,9 +187,9 @@ function RespuestaEnviada() {
     <section className="flex-1 flex flex-col items-center justify-center gap-6 py-10 animate-fade-in">
       <div className="relative flex items-center justify-center">
         {/* Anillo pulsante */}
-        <span className="absolute w-28 h-28 rounded-full bg-kahootGreen/20 animate-ping" />
-        <span className="absolute w-20 h-20 rounded-full bg-kahootGreen/30" />
-        <div className="relative w-16 h-16 rounded-full bg-kahootGreen flex items-center justify-center shadow-lg">
+        <span className="absolute w-28 h-28 rounded-full bg-brandSuccess/20 animate-ping" />
+        <span className="absolute w-20 h-20 rounded-full bg-brandSuccess/30" />
+        <div className="relative w-16 h-16 rounded-full bg-brandSuccess flex items-center justify-center shadow-lg">
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"
                strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
             <polyline points="20 6 9 17 4 12" />
@@ -205,7 +205,7 @@ function RespuestaEnviada() {
         {[0, 1, 2].map(i => (
           <span
             key={i}
-            className="w-3 h-3 rounded-full bg-kahootGreen/60 animate-bounce"
+            className="w-3 h-3 rounded-full bg-brandSuccess/60 animate-bounce"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}
@@ -349,7 +349,7 @@ function CazaIntrusoUI({ actividad, bloqueado, yaRespondio, miRespuesta, respond
             key={i}
             onClick={() => onElegir(i)}
             disabled={bloqueado}
-            className="bg-white border-2 border-mist rounded-2xl p-4 font-bold text-lg shadow-sm transition-all text-center hover:border-kahootBlue hover:shadow-md"
+            className="bg-white border-2 border-mist rounded-2xl p-4 font-bold text-lg shadow-sm transition-all text-center hover:border-brandPrimary hover:shadow-md"
           >
             {el}
           </button>
@@ -375,8 +375,8 @@ function DetectiveTextoUI({ actividad, bloqueado, yaRespondio, miRespuesta, resp
   // El pasaje siempre visible — solo las opciones se ocultan al confirmar
   const Pasaje = () => (
     <section className="mb-4">
-      <div className="bg-white w-full p-5 md:p-8 rounded-2xl shadow-sm border-l-4 border-kahootBlue mb-4">
-        <p className="font-bold text-xs tracking-widest uppercase text-kahootBlue mb-3">🕵️ Pasaje</p>
+      <div className="bg-white w-full p-5 md:p-8 rounded-2xl shadow-sm border-l-4 border-brandPrimary mb-4">
+        <p className="font-bold text-xs tracking-widest uppercase text-brandPrimary mb-3">🕵️ Pasaje</p>
         <p className="text-base md:text-lg font-bold text-ink leading-relaxed">{actividad.pasaje}</p>
       </div>
       <div className="bg-white w-full py-5 px-6 rounded-2xl shadow-sm text-center">
@@ -480,12 +480,12 @@ function OrdenUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, it
               disabled={bloqueado}
               className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 font-bold text-lg transition-all text-left ${
                 colocado
-                  ? 'border-kahootBlue bg-kahootBlue/5 shadow-sm'
-                  : 'border-mist bg-white hover:border-kahootBlue/50'
+                  ? 'border-brandPrimary bg-brandPrimary/5 shadow-sm'
+                  : 'border-mist bg-white hover:border-brandPrimary/50'
               }`}
             >
               <span className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
-                colocado ? 'bg-kahootBlue text-white' : 'bg-ink/10 text-ink/40'
+                colocado ? 'bg-brandPrimary text-white' : 'bg-ink/10 text-ink/40'
               }`}>
                 {colocado ? pos + 1 : '?'}
               </span>
@@ -509,7 +509,7 @@ function OrdenUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, it
         <button
           onClick={confirmar}
           disabled={bloqueado || sequencia.length !== items.length || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>
@@ -605,15 +605,15 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
                 onClick={() => matched !== null ? clearPair(li) : clickLeft(li)}
                 className={`w-full p-3 rounded-xl border-2 font-bold text-sm text-left transition-all ${
                   isSelected
-                    ? 'border-kahootBlue bg-kahootBlue/10 ring-2 ring-kahootBlue/30'
+                    ? 'border-brandPrimary bg-brandPrimary/10 ring-2 ring-brandPrimary/30'
                     : matched !== null
-                      ? 'border-kahootGreen bg-kahootGreen/5'
-                      : 'border-mist bg-white hover:border-kahootBlue/50'
+                      ? 'border-brandSuccess bg-brandSuccess/5'
+                      : 'border-mist bg-white hover:border-brandPrimary/50'
                 }`}
               >
                 <div>{par.izquierda}</div>
                 {matched !== null && (
-                  <div className="text-xs text-kahootGreen mt-1">
+                  <div className="text-xs text-brandSuccess mt-1">
                     ↔ {pares[matched]?.derecha}
                   </div>
                 )}
@@ -635,7 +635,7 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
                   isUsed
                     ? 'border-mist bg-mist/30 opacity-40 cursor-not-allowed'
                     : selectedLeft !== null
-                      ? 'border-kahootGreen bg-kahootGreen/5 hover:bg-kahootGreen/10'
+                      ? 'border-brandSuccess bg-brandSuccess/5 hover:bg-brandSuccess/10'
                       : 'border-mist bg-white'
                 }`}
               >
@@ -655,7 +655,7 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
         <button
           onClick={confirmar}
           disabled={bloqueado || !listo || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>
@@ -747,7 +747,7 @@ function ClasificadorUI({ actividad, bloqueado, yaRespondio, miRespuesta, respon
         <button
           onClick={confirmar}
           disabled={bloqueado || !listo || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>
@@ -827,9 +827,9 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
                     onClick={() => clearBlanco(i)}
                     className={`mx-1 min-w-[80px] px-3 py-1 rounded-xl font-black border-b-4 transition-all ${
                       blanco === i
-                        ? 'border-kahootBlue bg-kahootBlue/10 text-kahootBlue'
+                        ? 'border-brandPrimary bg-brandPrimary/10 text-brandPrimary'
                         : elegidas[i]
-                          ? 'border-kahootGreen bg-kahootGreen/10 text-kahootGreen'
+                          ? 'border-brandSuccess bg-brandSuccess/10 text-brandSuccess'
                           : 'border-ink/30 bg-ink/5 text-ink/30'
                     }`}
                   >
@@ -859,7 +859,7 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
                 className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                   usada
                     ? 'bg-ink/5 text-ink/20 cursor-not-allowed'
-                    : 'bg-white border-2 border-kahootBlue text-kahootBlue hover:bg-kahootBlue hover:text-white shadow-sm'
+                    : 'bg-white border-2 border-brandPrimary text-brandPrimary hover:bg-brandPrimary hover:text-white shadow-sm'
                 }`}
               >
                 {palabra}
@@ -880,7 +880,7 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
         <button
           onClick={confirmar}
           disabled={bloqueado || !listo || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>

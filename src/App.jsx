@@ -3,6 +3,9 @@ import Home from './pages/Home.jsx';
 import TeacherView from './pages/teacher/TeacherView.jsx';
 import TeacherLogin from './pages/teacher/TeacherLogin.jsx';
 import TeacherDashboard from './pages/teacher/TeacherDashboard.jsx';
+import Bank from './pages/teacher/Bank.jsx';
+import Forums from './pages/teacher/Forums.jsx';
+import ForumTopic from './pages/teacher/ForumTopic.jsx';
 import StudentView from './pages/student/StudentView.jsx';
 import AdminLogin from './pages/admin/AdminLogin.jsx';
 import AdminPanel from './pages/admin/AdminPanel.jsx';
@@ -46,6 +49,30 @@ export default function App() {
             element={
               <ProtectedRoute requiredRole="docente">
                 <TeacherDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/docente/banco"
+            element={
+              <ProtectedRoute requiredRole="docente">
+                <Bank />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/docente/foro"
+            element={
+              <ProtectedRoute requiredRole="docente">
+                <Forums />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/docente/foro/:hiloId"
+            element={
+              <ProtectedRoute requiredRole="docente">
+                <ForumTopic />
               </ProtectedRoute>
             }
           />

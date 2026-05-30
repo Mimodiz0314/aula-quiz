@@ -29,7 +29,7 @@ export default function Reveal({ sesion, yo }) {
 
   return (
     <main className={`min-h-screen flex flex-col items-center justify-center p-6 text-center transition-colors duration-300 ${
-      sinRespuesta ? 'bg-gameBg text-ink' : acerto ? 'bg-kahootGreen text-white' : 'bg-kahootRed text-white'
+      sinRespuesta ? 'bg-gameBg text-ink' : acerto ? 'bg-brandSuccess text-white' : 'bg-brandDanger text-white'
     }`}>
       <header className="absolute top-4 left-4">
         <button
@@ -97,8 +97,8 @@ function PuntajeBanner({ yo, sinRespuesta }) {
         </p>
         <p className="text-3xl font-black tabular-nums flex items-center gap-2">
           #{puesto || '-'}
-          {delta > 0 && <span className="text-kahootGreen text-base">▲{delta}</span>}
-          {delta < 0 && <span className="text-kahootRed text-base">▼{-delta}</span>}
+          {delta > 0 && <span className="text-brandSuccess text-base">▲{delta}</span>}
+          {delta < 0 && <span className="text-brandDanger text-base">▼{-delta}</span>}
         </p>
       </div>
       <div className="text-right">

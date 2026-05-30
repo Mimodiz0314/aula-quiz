@@ -34,69 +34,71 @@ body {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
 }
 
-/* Base shape for options and buttons to have a nice 3D pop effect */
-.btn-3d {
-  @apply relative block font-bold transition-transform active:translate-y-1 rounded-xl text-center shadow-[0_4px_0_0_rgba(0,0,0,0.15)] overflow-hidden;
-}
+@layer components {
+  /* Base shape for options and buttons to have a nice 3D pop effect */
+  .btn-3d {
+    @apply relative block font-bold transition-transform active:translate-y-1 rounded-xl text-center shadow-[0_4px_0_0_rgba(0,0,0,0.15)] overflow-hidden;
+  }
 
-/* Colors for Kahoot-style options */
-.option-red {
-  @apply bg-kahootRed text-white shadow-[0_4px_0_0_rgba(180,20,40,1)];
-}
-.option-blue {
-  @apply bg-kahootBlue text-white shadow-[0_4px_0_0_rgba(15,80,170,1)];
-}
-.option-yellow {
-  @apply bg-kahootYellow text-white shadow-[0_4px_0_0_rgba(180,130,0,1)];
-}
-.option-green {
-  @apply bg-kahootGreen text-white shadow-[0_4px_0_0_rgba(30,110,10,1)];
-}
+  /* Colors for Kahoot-style options */
+  .option-red {
+    @apply bg-brandDanger text-white shadow-[0_4px_0_0_rgba(180,20,40,1)];
+  }
+  .option-blue {
+    @apply bg-brandPrimary text-white shadow-[0_4px_0_0_rgba(15,80,170,1)];
+  }
+  .option-yellow {
+    @apply bg-brandAccent text-white shadow-[0_4px_0_0_rgba(180,130,0,1)];
+  }
+  .option-green {
+    @apply bg-brandSuccess text-white shadow-[0_4px_0_0_rgba(30,110,10,1)];
+  }
 
-/* General primary button */
-.btn-primary {
-  @apply inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl
-         bg-ink text-white font-body font-bold text-lg
-         transition-transform active:translate-y-1 active:shadow-none
-         shadow-[0_4px_0_0_rgba(0,0,0,0.5)]
-         disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:shadow-[0_4px_0_0_rgba(0,0,0,0.5)];
-}
+  /* General primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl
+           bg-ink text-white font-body font-bold text-lg
+           transition-transform active:translate-y-1 active:shadow-none
+           shadow-[0_4px_0_0_rgba(0,0,0,0.5)]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:shadow-[0_4px_0_0_rgba(0,0,0,0.5)];
+  }
 
-.btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl
-         bg-white text-ink font-body font-bold text-lg
-         border-2 border-mist
-         transition-transform active:translate-y-1 active:shadow-none
-         shadow-[0_4px_0_0_rgba(200,200,200,1)]
-         disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:shadow-[0_4px_0_0_rgba(200,200,200,1)];
-}
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl
+           bg-white text-ink font-body font-bold text-lg
+           border-2 border-mist
+           transition-transform active:translate-y-1 active:shadow-none
+           shadow-[0_4px_0_0_rgba(200,200,200,1)]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:shadow-[0_4px_0_0_rgba(200,200,200,1)];
+  }
 
-.btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
-         bg-transparent text-ink font-bold text-sm hover:bg-black/5
-         transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
-}
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+           bg-transparent text-ink font-bold text-sm hover:bg-black/5
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
 
-/* Inputs depurados */
-.field {
-  @apply w-full bg-white border-2 border-mist focus:border-ink rounded-xl
-         font-bold text-xl md:text-2xl py-4 px-6 outline-none transition-colors
-         placeholder:text-ink/30 text-center shadow-sm;
-}
+  /* Inputs depurados */
+  .field {
+    @apply w-full bg-white border-2 border-mist focus:border-ink rounded-xl
+           font-bold text-xl md:text-2xl py-4 px-6 outline-none transition-colors
+           placeholder:text-ink/30 text-center shadow-sm;
+  }
 
-/* Card Container */
-.game-card {
-  @apply bg-white rounded-2xl shadow-md border border-black/5 p-6 md:p-10;
+  /* Card Container */
+  .game-card {
+    @apply bg-white rounded-2xl shadow-md border border-black/5 p-6 md:p-10;
+  }
 }
 
 /* Animaciones */
 .reveal-affirm {
-  background-color: theme('colors.affirm');
+  background-color: theme('colors.brandSuccess');
   color: white;
   transition: background-color 200ms ease-out, color 200ms ease-out;
 }
 .reveal-deny {
-  background-color: theme('colors.deny');
+  background-color: theme('colors.brandDanger');
   color: white;
   transition: background-color 200ms ease-out, color 200ms ease-out;
 }

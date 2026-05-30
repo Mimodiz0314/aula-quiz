@@ -84,7 +84,7 @@ function PreviewItem({ actividad, idx, total }) {
       <div className="flex items-center justify-between px-4 pt-3 text-xs font-bold text-ink/50">
         <span>Pregunta {idx + 1} de {total}</span>
         {respuesta !== null && (
-          <button onClick={() => setRespuesta(null)} className="text-kahootBlue hover:underline">
+          <button onClick={() => setRespuesta(null)} className="text-brandPrimary hover:underline">
             ↺ Probar de nuevo
           </button>
         )}

@@ -140,7 +140,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="font-black text-4xl italic tracking-tighter mb-1">
-            Aula<span className="text-kahootBlue">!</span>
+            Aula<span className="text-brandPrimary">!</span>
           </div>
           <p className="font-bold text-sm tracking-widest uppercase text-ink/40">
             Panel Administrador
@@ -312,6 +312,15 @@ export default function AdminLogin() {
           )}
 
         </div>
+        
+        <div className="text-center mt-8">
+          <button 
+            onClick={() => navigate('/')} 
+            className="inline-flex items-center justify-center gap-2 font-black text-sm text-ink/70 bg-white border-2 border-mist/80 px-6 py-3 rounded-2xl shadow-[0_4px_0_0_#E6E2D8] hover:bg-mist/30 hover:text-ink hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#E6E2D8] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest"
+          >
+            ← Volver a Inicio
+          </button>
+        </div>
       </div>
     </main>
   );
@@ -357,7 +366,7 @@ function Alerta({ children }) {
 
 function Exito({ children }) {
   return (
-    <div className="bg-green-50 border-l-4 border-kahootGreen p-4 rounded-r-lg text-kahootGreen font-bold text-sm">
+    <div className="bg-green-50 border-l-4 border-brandSuccess p-4 rounded-r-lg text-brandSuccess font-bold text-sm">
       {children}
     </div>
   );
