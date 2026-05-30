@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { db } from '../firebase/config.js';
+import { subscribeServerOffset } from '../services/serverClock.js';
 
 /**
  * useServerTimer
@@ -18,11 +17,11 @@ export function useServerTimer(inicioMs, duracionSeg, activo, onExpire) {
   const [restante, setRestante] = useState(duracionSeg);
   const [serverOffset, setServerOffset] = useState(0);
 
-  // Escuchar el desvío del reloj con Firebase una sola vez al montar
+  // Escuchar el desvío del reloj una sola vez al montar. La fuente (Firebase u
+  // offset 0 local) la decide serverClock según el motor activo.
   useEffect(() => {
-    const offsetRef = ref(db, '.info/serverTimeOffset');
-    const unsubscribe = onValue(offsetRef, (snap) => {
-      setServerOffset(snap.val() || 0);
+    const unsubscribe = subscribeServerOffset((offset) => {
+      setServerOffset(offset);
     });
     return unsubscribe;
   }, []);

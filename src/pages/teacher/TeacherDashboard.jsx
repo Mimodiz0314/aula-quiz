@@ -4,6 +4,8 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { obtenerHistorialDocente, eliminarHistorial, crearSesion, obtenerSesion, obtenerClaves, eliminarSesion } from '../../services/sessionService.js';
 import { fusionarLista } from '../../utils/clave.js';
 import { listarSalasGuardadas, quitarSala, reemplazarSalas } from '../../utils/savedRooms.js';
+import { isOfflineEnabled } from '../../services/featureFlag.js';
+import { isOnline } from '../../services/connectivity.js';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 import StudentPreview from '../../components/StudentPreview.jsx';
 
@@ -44,8 +46,13 @@ export default function TeacherDashboard() {
         } catch { /* ignore */ }
       }
       if (!activo) return;
-      // Auto-limpieza: deja en memoria solo las salas que siguen vivas.
-      reemplazarSalas(uid, verificadas.map(v => ({ pin: v.pin, tema: v.tema, guardada_en: Date.now() })));
+      // Auto-limpieza: solo podamos cuando estamos seguros (online o modo
+      // offline desactivado). Estando offline, una sala de nube no se puede
+      // verificar y NO debemos borrar su puntero: se mostrará al reconectar.
+      const puedePodar = !isOfflineEnabled() || isOnline();
+      if (puedePodar) {
+        reemplazarSalas(uid, verificadas.map(v => ({ pin: v.pin, tema: v.tema, guardada_en: Date.now() })));
+      }
       setSalasActivas(verificadas);
     })();
     return () => { activo = false; };

@@ -9,6 +9,10 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 registerSW({ onNeedRefresh() {}, onOfflineReady() {} });
 
+// Interruptor oculto del modo offline (consola: aulaOffline.on()/off()/status()).
+import { installDevToggle } from './services/devToggle.js';
+installDevToggle();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
