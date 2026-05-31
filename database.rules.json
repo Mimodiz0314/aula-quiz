@@ -75,11 +75,11 @@
     },
     "banco_comunidad": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && auth.token.email != null"
     },
     "ai_training_logs": {
       ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
-      ".write": "auth != null"
+      ".write": "auth != null && auth.token.email != null"
     },
     "configuracion_ia": {
       ".read": "auth != null",
@@ -92,15 +92,15 @@
       },
       "hilos": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && auth.token.email != null"
       },
       "respuestas": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && auth.token.email != null"
       },
       "reportes": {
         ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
-        ".write": "auth != null"
+        ".write": "auth != null && auth.token.email != null"
       }
     }
   }

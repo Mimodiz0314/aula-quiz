@@ -178,7 +178,7 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
     {
       name: 'Groq',
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-      apiKey: process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY,
+      apiKey: process.env.GROQ_API_KEY, // SEC-004: solo server-side; sin prefijo VITE_
       model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
     },
     {
