@@ -201,6 +201,9 @@ export default function Join({ onJoined, pinInicial }) {
                   onChange={(e) => setGrado(e.target.value)}
                   placeholder="Curso (Ej: 9A)"
                 />
+                <p className="text-ink/40 font-bold text-xs text-center px-2">
+                  🔒 Por tu privacidad, puedes usar tu apodo o nombre de pila (no es necesario tu nombre completo).
+                </p>
               </div>
               
               {error && (
