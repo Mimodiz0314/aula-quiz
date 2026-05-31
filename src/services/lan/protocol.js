@@ -28,7 +28,7 @@ export const MSG = Object.freeze({
 });
 
 // --- Builders (cliente) ---
-export const hello = (pin, clientId) => ({ type: MSG.HELLO, pin, clientId, v: PROTOCOL_VERSION });
+export const hello = (pin, clientId, token) => ({ type: MSG.HELLO, pin, clientId, token: token || null, v: PROTOCOL_VERSION });
 export const join = (pin, clientId, nombre, grado, reqId, studentId) =>
   ({ type: MSG.JOIN, pin, clientId, nombre, grado, reqId, studentId: studentId || null });
 export const answer = (pin, clientId, studentId, preguntaIdx, opcionIdx, reqId) =>

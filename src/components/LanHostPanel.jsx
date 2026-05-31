@@ -23,11 +23,11 @@ export default function LanHostPanel({ pin }) {
     setEstado('iniciando');
     setErrorMsg('');
     try {
-      const { ip, port } = await iniciarServidorLAN(pin);
+      const { ip, port, token } = await iniciarServidorLAN(pin);
       if (!ip) throw new Error('No se detectó la IP de la red. Activa el punto de acceso (hotspot) o conéctate a la red del aula.');
-      const url = buildJoinUrl(ip, port, pin);
+      const url = buildJoinUrl(ip, port, pin, { token });
       const dataUrl = await QRCode.toDataURL(url, { width: 260, margin: 1 });
-      setInfo({ ip, port });
+      setInfo({ ip, port, token });
       setQr(dataUrl);
       setEstado('activo');
     } catch (e) {
@@ -44,7 +44,7 @@ export default function LanHostPanel({ pin }) {
   }
 
   if (estado === 'activo' && info) {
-    const url = buildJoinUrl(info.ip, info.port, pin);
+    const url = buildJoinUrl(info.ip, info.port, pin, { token: info.token });
     const code = buildShortCode(info.ip, info.port, pin);
     return (
       <div className="w-full max-w-md mt-6 bg-mist/20 p-5 rounded-2xl border border-brandSuccess/40 text-center">

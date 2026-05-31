@@ -25,7 +25,7 @@ export default function StudentView() {
     enableOfflineOverride(); // el modo LAN requiere la capa offline activa
     try {
       const transport = WebSocketTransport(buildWsUrl(info.host, info.port));
-      conectarClienteLAN(info.pin, transport).catch(() => {});
+      conectarClienteLAN(info.pin, transport, info.token).catch(() => {});
       setLanPrefill(info.pin);
     } catch { /* ignore */ }
   }, []);

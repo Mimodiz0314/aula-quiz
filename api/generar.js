@@ -169,12 +169,29 @@ Devuelve EXCLUSIVAMENTE el array JSON. Nada antes, nada después.`;
     userPrompt = `Tema: ${tema}\nNivel del estudiante: ${nivel || 'bachillerato'}${guiaNivel}\nGenera ${cantidad || 10} preguntas siguiendo estrictamente el formato JSON especificado.`;
   }
 
+  // Multi-proveedor con fallback REAL (R-2.2 / ARCH-001): si un proveedor falla
+  // (clave caducada, caída, rate-limit), se intenta el siguiente automáticamente.
+  // Todos usan el formato OpenAI-compatible que ya consume el bucle de abajo.
+  // Cada proveedor se activa solo si su variable de entorno existe; si solo está
+  // GROQ_API_KEY el comportamiento es idéntico al anterior.
   const providers = [
     {
       name: 'Groq',
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       apiKey: process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile',
+      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    },
+    {
+      name: 'OpenRouter',
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct',
+    },
+    {
+      name: 'OpenAI',
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     },
   ];
 

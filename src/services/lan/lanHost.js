@@ -22,7 +22,7 @@ import {
  * Arranca el host sobre una sala (pin) que ya existe en el motor local.
  * Devuelve { stop() } para detenerlo.
  */
-export function createLanHost(pin, transport) {
+export function createLanHost(pin, transport, token = null) {
   // Cola serial de escrituras: encadena promesas para que JOIN/ANSWER no
   // pisen el objeto de sesión entre sí.
   let cola = Promise.resolve();
@@ -42,6 +42,11 @@ export function createLanHost(pin, transport) {
 
     switch (msg.type) {
       case MSG.HELLO: {
+        // Autenticación de sala: si el host tiene token, el cliente debe enviarlo.
+        if (token && msg.token !== token) {
+          transport.sendTo(cid, welcome(pin, false, 'token'));
+          break;
+        }
         store.getSesion(pin).then((sesion) => {
           const existe = !!sesion;
           const cerrada = existe && sesion.estado_actual === ESTADOS.RESULTADOS_FINALES;

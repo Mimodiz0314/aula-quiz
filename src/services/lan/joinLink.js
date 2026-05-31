@@ -13,10 +13,11 @@
 // mostrar también la IP completa por si la subred no es la típica.
 // ---------------------------------------------------------------------------
 
-/** Construye la URL completa que codifica el QR. */
-export function buildJoinUrl(host, port, pin, { path = '/jugar', secure = false } = {}) {
+/** Construye la URL completa que codifica el QR (incluye el token de sala). */
+export function buildJoinUrl(host, port, pin, { path = '/jugar', secure = false, token = '' } = {}) {
   const proto = secure ? 'https' : 'http';
-  return `${proto}://${host}:${port}${path}?lan=${host}:${port}&pin=${encodeURIComponent(pin)}`;
+  const t = token ? `&t=${encodeURIComponent(token)}` : '';
+  return `${proto}://${host}:${port}${path}?lan=${host}:${port}&pin=${encodeURIComponent(pin)}${t}`;
 }
 
 /** Construye un código corto tecleable. Usa el último octeto de la IP. */
@@ -34,11 +35,12 @@ export function parseJoinFromSearch(search) {
     const params = new URLSearchParams(search || '');
     const lan = params.get('lan');
     const pin = params.get('pin');
+    const token = params.get('t');
     if (!lan) return null;
     const [host, portStr] = lan.split(':');
     const port = Number(portStr);
     if (!host || !Number.isInteger(port)) return null;
-    return { host, port, pin: pin || null };
+    return { host, port, pin: pin || null, token: token || null };
   } catch {
     return null;
   }

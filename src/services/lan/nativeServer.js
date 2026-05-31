@@ -42,20 +42,28 @@ function NativeHostTransport() {
 
 let transportActivo = null;
 
+function nuevoToken() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID().slice(0, 8);
+  return Math.random().toString(36).slice(2, 10);
+}
+
 /**
  * Inicia el servidor local del docente y conecta el host lógico (lanHost) sobre
- * la sala `pin` (que ya existe en el motor local). Devuelve { ip, port }.
+ * la sala `pin` (que ya existe en el motor local). Genera un TOKEN de sala que
+ * solo conoce quien escanee el QR; sin él, el host rechaza la conexión.
+ * Devuelve { ip, port, token }.
  */
 export async function iniciarServidorLAN(pin, port = 8080) {
   if (!esNativo()) {
     throw new Error('El servidor local solo funciona en la app instalada (APK).');
   }
+  const token = nuevoToken();
   const transport = NativeHostTransport();
   await transport.start();          // listeners listos ANTES de aceptar conexiones
   transportActivo = transport;
-  lan.iniciarHostLAN(String(pin), transport);
+  lan.iniciarHostLAN(String(pin), transport, token);
   const info = await LanServer.start({ port });
-  return info;                       // { ip, port }
+  return { ...info, token };          // { ip, port, token }
 }
 
 export async function detenerServidorLAN(pin) {

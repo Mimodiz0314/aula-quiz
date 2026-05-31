@@ -38,11 +38,11 @@ export function isLanPin(pin) {
 // ---------------------------------------------------------------------------
 // ROL HOST
 // ---------------------------------------------------------------------------
-export function iniciarHostLAN(pin, hostTransport) {
+export function iniciarHostLAN(pin, hostTransport, token = null) {
   pin = String(pin);
   if (hosts.has(pin)) return hosts.get(pin);
   hostPins.add(pin);
-  const ctrl = createLanHost(pin, hostTransport);
+  const ctrl = createLanHost(pin, hostTransport, token);
   hosts.set(pin, ctrl);
   return ctrl;
 }
@@ -58,7 +58,7 @@ export function detenerHostLAN(pin) {
 // ---------------------------------------------------------------------------
 // ROL CLIENTE
 // ---------------------------------------------------------------------------
-function createClientManager(pin, transport) {
+function createClientManager(pin, transport, token = null) {
   const clientId = newClientId();
   let lastSnapshot = null;
   let welcome = null;                 // { ok, reason }
@@ -112,7 +112,7 @@ function createClientManager(pin, transport) {
 
   transport.onStatus((s) => {
     if (s === 'open') {
-      transport.send(hello(pin, clientId));
+      transport.send(hello(pin, clientId, token));
       pingReloj();
       clockTimer = setInterval(pingReloj, 10000);
     }
@@ -187,11 +187,11 @@ function createClientManager(pin, transport) {
   };
 }
 
-export async function conectarClienteLAN(pin, clientTransport) {
+export async function conectarClienteLAN(pin, clientTransport, token = null) {
   pin = String(pin);
   let mgr = clients.get(pin);
   if (!mgr) {
-    mgr = createClientManager(pin, clientTransport);
+    mgr = createClientManager(pin, clientTransport, token);
     clients.set(pin, mgr);
   }
   clienteActivo = mgr;
