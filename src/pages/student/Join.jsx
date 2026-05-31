@@ -35,7 +35,7 @@ export default function Join({ onJoined, pinInicial }) {
 
   async function handleValidarPin() {
     setError(null);
-    if (!/^\d{5}$/.test(pin)) return setError('El PIN debe tener 5 números.');
+    if (!/^\d{5,6}$/.test(pin)) return setError('El PIN debe tener 5 o 6 números.');
     setCargando(true);
     try {
       const r = await validarPin(pin);
@@ -157,10 +157,10 @@ export default function Join({ onJoined, pinInicial }) {
                 <input
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={5}
+                  maxLength={6}
                   className="w-full bg-white border-4 border-mist focus:border-brandPrimary rounded-3xl font-black text-5xl py-6 px-6 outline-none transition-all text-center tracking-[0.3em] shadow-[0_6px_0_0_#E6E2D8] focus:shadow-[0_6px_0_0_#6A2BDE] text-ink placeholder:text-ink/20 placeholder:tracking-normal placeholder:text-2xl"
                   value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="PIN"
                   autoFocus
                 />
@@ -172,7 +172,7 @@ export default function Join({ onJoined, pinInicial }) {
               
               <button
                 onClick={handleValidarPin}
-                disabled={cargando || pin.length !== 5}
+                disabled={cargando || pin.length < 5}
                 className="mt-4 w-full py-5 rounded-3xl bg-ink text-white font-black text-2xl shadow-[0_8px_0_0_#1a1a1a] hover:translate-y-1 hover:shadow-[0_4px_0_0_#1a1a1a] active:translate-y-2 active:shadow-none transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-[0_8px_0_0_#1a1a1a] disabled:cursor-not-allowed"
               >
                 {cargando ? 'Buscando...' : 'Entrar'}

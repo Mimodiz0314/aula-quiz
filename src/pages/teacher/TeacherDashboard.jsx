@@ -6,6 +6,7 @@ import { fusionarLista } from '../../utils/clave.js';
 import { listarSalasGuardadas, quitarSala, reemplazarSalas, obtenerContenidoSala } from '../../utils/savedRooms.js';
 import { isOfflineEnabled } from '../../services/featureFlag.js';
 import { isOnline } from '../../services/connectivity.js';
+import ConsentGate from '../../components/ConsentGate.jsx';
 import WorksheetPrint from '../../components/WorksheetPrint.jsx';
 import StudentPreview from '../../components/StudentPreview.jsx';
 import { exportToWord } from '../../utils/exportWorksheet.js';
@@ -215,6 +216,7 @@ export default function TeacherDashboard() {
 
   return (
     <main className="min-h-screen bg-gameBg">
+      <ConsentGate />
       {/* Header */}
       <header className="bg-white border-b border-mist px-6 md:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
