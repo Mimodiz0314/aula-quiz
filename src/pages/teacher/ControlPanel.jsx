@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ESTADOS,
   marcarTiempoAgotado,
+  iniciarTemporizador,
   revelarRespuesta,
   siguientePregunta,
   obtenerClaves,
@@ -200,7 +201,24 @@ export default function ControlPanel({ pin, sesion }) {
         <div className="font-bold text-sm tracking-widest uppercase text-ink/50 bg-mist/50 px-3 py-1 rounded-full">
           {sesion.estado_actual.replace(/_/g, ' ')}
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap items-center">
+          {esActiva && (
+            <div className="flex items-center gap-2 bg-mist/30 px-3 py-1.5 rounded-xl">
+              <span className="font-bold text-xs uppercase tracking-wider text-ink/50">
+                ⏱ {esSinLimite ? 'Iniciar temporizador' : 'Reiniciar'}
+              </span>
+              {[30, 60, 120, 300].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => iniciarTemporizador(pin, s)}
+                  className="px-3 py-1 rounded-lg bg-white hover:bg-brandPrimary hover:text-white font-black text-sm shadow-sm transition-colors"
+                  title={`Iniciar ${s < 60 ? s + ' segundos' : (s / 60) + ' minuto(s)'} para esta pregunta`}
+                >
+                  {s < 60 ? `${s}s` : `${s / 60}m`}
+                </button>
+              ))}
+            </div>
+          )}
           {esActiva && (
             <button onClick={() => marcarTiempoAgotado(pin)} className="btn-secondary">
               Detener tiempo

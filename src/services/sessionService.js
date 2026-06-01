@@ -47,6 +47,9 @@ export function iniciarSesion(pin) {
 export function marcarTiempoAgotado(pin) {
   return pickBackendForPin(pin).marcarTiempoAgotado(pin);
 }
+export function iniciarTemporizador(pin, segundos) {
+  return pickBackendForPin(pin).iniciarTemporizador(pin, segundos);
+}
 export function revelarRespuesta(pin) {
   return pickBackendForPin(pin).revelarRespuesta(pin);
 }

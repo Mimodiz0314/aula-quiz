@@ -94,6 +94,22 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
         </div>
       </header>
 
+      {/* Barra de tiempo: visible solo cuando hay límite. Se vacía al agotarse. */}
+      {!esSinLimite && (
+        <div className="h-2.5 bg-white/50 rounded-full overflow-hidden mb-4 shadow-inner">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+              !bloqueado && restante <= 5 ? 'bg-brandDanger' : 'bg-brandPrimary'
+            }`}
+            style={{
+              width: bloqueado
+                ? '0%'
+                : `${Math.max(0, Math.min(100, (restante / (sesion.pregunta_duracion || 1)) * 100))}%`,
+            }}
+          />
+        </div>
+      )}
+
       {/* Dispatcher por tipo (compartido con la vista previa del docente) */}
       <ActivityStudentView {...props} />
     </main>

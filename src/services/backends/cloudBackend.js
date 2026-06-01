@@ -160,6 +160,19 @@ export async function marcarTiempoAgotado(pin) {
 }
 
 /**
+ * Inicia (o reinicia) un temporizador EN VIVO para la pregunta actual: fija la
+ * duración y reinicia el reloj desde ahora. Los estudiantes ven la cuenta
+ * regresiva empezar al instante, aunque la pregunta hubiera arrancado sin límite.
+ */
+export async function iniciarTemporizador(pin, segundos) {
+  await update(ref(db, `sesiones/${pin}`), {
+    estado_actual: ESTADOS.PREGUNTA_ACTIVA,
+    pregunta_duracion: segundos,
+    pregunta_inicio_ts: serverTimestamp(),
+  });
+}
+
+/**
  * Revela la respuesta correcta. Aquí recalculamos la nota_acumulada
  * de cada estudiante para que la interfaz se tiña verde/rojo y la
  * tabla final esté siempre consistente.

@@ -225,6 +225,7 @@ export const crearSesion = (...a) => local.crearSesion(...a);      // (no se usa
 export const setDuracion = (...a) => local.setDuracion(...a);
 export const iniciarSesion = (...a) => local.iniciarSesion(...a);
 export const marcarTiempoAgotado = (...a) => local.marcarTiempoAgotado(...a);
+export const iniciarTemporizador = (...a) => local.iniciarTemporizador(...a);
 export const revelarRespuesta = (...a) => local.revelarRespuesta(...a);
 export const siguientePregunta = (...a) => local.siguientePregunta(...a);
 export const cerrarSesion = (...a) => local.cerrarSesion(...a);

@@ -100,6 +100,15 @@ export async function marcarTiempoAgotado(pin) {
   await store.putSesion(pin, sesion);
 }
 
+export async function iniciarTemporizador(pin, segundos) {
+  const sesion = await store.getSesion(pin);
+  if (!sesion) return;
+  sesion.estado_actual = ESTADOS.PREGUNTA_ACTIVA;
+  sesion.pregunta_duracion = segundos;
+  sesion.pregunta_inicio_ts = Date.now();
+  await store.putSesion(pin, sesion);
+}
+
 export async function revelarRespuesta(pin) {
   const sesion = await store.getSesion(pin);
   if (!sesion) return;
