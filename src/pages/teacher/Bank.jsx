@@ -144,7 +144,7 @@ export default function Bank() {
             {filtradas.map(act => (
               <div key={act.id} className="bg-white p-6 rounded-3xl shadow-sm flex flex-col justify-between border-t-4 border-brandPrimary">
                 <div>
-                  <h3 className="font-black text-xl mb-2">{act.tema}</h3>
+                  <h3 className="font-black text-xl mb-2 line-clamp-2 break-words" title={act.tema}>{act.tema}</h3>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-bold px-2 py-1 bg-ink/5 text-ink/60 rounded-full flex items-center gap-1">
                       {act.autorNombre === 'Incógnita' ? '🕵️' : '👤'} {act.autorNombre}
@@ -188,7 +188,7 @@ export default function Bank() {
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl">
             <div className="flex justify-between items-start mb-6 shrink-0">
               <div>
-                <h2 className="text-2xl font-black text-ink mb-1">{previewActividad.tema}</h2>
+                <h2 className="text-2xl font-black text-ink mb-1 line-clamp-3 break-words">{previewActividad.tema}</h2>
                 <p className="text-sm font-bold text-ink/60">
                   {previewActividad.autorNombre} · {previewActividad.actividades?.length || 0} actividades
                 </p>
