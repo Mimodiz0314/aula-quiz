@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { generarActividades, logAIFeedback } from '../../services/aiService.js';
+import { generarActividades, generarPreguntas, logAIFeedback } from '../../services/aiService.js';
 import { crearSesion } from '../../services/sessionService.js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ReviewActivities from '../../components/ReviewActivities.jsx';
@@ -29,6 +29,9 @@ export default function Setup({ onCreated }) {
   const [tema, setTema] = useState(location.state?.tema || '');
   const [modoOrigen, setModoOrigen] = useState('tema'); // 'tema' o 'texto' o 'youtube'
   const [textoBase, setTextoBase] = useState('');
+  // Submodo del Lote: 'importar' = extrae cada pregunta tal cual (1 actividad por
+  // pregunta, ignora contadores); 'generar' = la IA adapta a los tipos elegidos.
+  const [loteModo, setLoteModo] = useState('importar');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [nivel, setNivel] = useState('bachillerato');
   const [grado, setGrado] = useState(location.state?.grado || '');         // opcional
@@ -65,27 +68,44 @@ export default function Setup({ onCreated }) {
     setError(null);
     const isTexto = modoOrigen === 'texto';
     const isYoutube = modoOrigen === 'youtube';
+    const isImportarLote = isTexto && loteModo === 'importar';
     if (!isTexto && !isYoutube && !tema.trim()) return setError('Indica un tema para la evaluación.');
     if (isTexto && !textoBase.trim()) return setError('Por favor pega el cuestionario o el resumen de texto.');
     if (isYoutube && !youtubeUrl.trim()) return setError('Por favor introduce un enlace de video de YouTube.');
-    if (total < 1) return setError('Añade al menos 1 actividad usando los contadores de abajo.');
+    // En "Importar tal cual" no se usan los contadores: cada pregunta del texto
+    // se convierte en una actividad. En los demás modos sí se exige al menos 1.
+    if (!isImportarLote && total < 1) return setError('Añade al menos 1 actividad usando los contadores de abajo.');
 
     const seleccion = Object.entries(contadores).filter(([, v]) => v > 0);
     setCargando(true);
     setPaso('generando');
-    
+
     const temaFinal = tema.trim() || (isYoutube ? 'Evaluación desde YouTube' : 'Evaluación de Texto');
-    
+
     try {
-      const resultado = await generarActividades({
-        tema: temaFinal,
-        nivel,
-        grado,
-        dificultad,
-        seleccion,
-        textoBase: isTexto ? textoBase.trim() : '',
-        youtubeUrl: isYoutube ? youtubeUrl.trim() : ''
-      });
+      let resultado;
+      if (isImportarLote) {
+        // Extracción FIEL: parte el cuestionario pegado en una actividad por
+        // pregunta (selección clásica), tal como se ve en el banco para las demás.
+        resultado = await generarPreguntas({
+          tema: temaFinal,
+          nivel,
+          grado,
+          dificultad,
+          cantidad: 60,
+          textoBase: textoBase.trim(),
+        });
+      } else {
+        resultado = await generarActividades({
+          tema: temaFinal,
+          nivel,
+          grado,
+          dificultad,
+          seleccion,
+          textoBase: isTexto ? textoBase.trim() : '',
+          youtubeUrl: isYoutube ? youtubeUrl.trim() : ''
+        });
+      }
       setActividades(resultado);
       if (!tema.trim()) {
         setTema(temaFinal);
@@ -300,10 +320,35 @@ export default function Setup({ onCreated }) {
                 disabled={cargando}
               />
             </div>
+            {/* Submodo del lote: importar tal cual vs adaptar con IA */}
+            <div className="flex gap-2 p-1 bg-mist/40 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLoteModo('importar')}
+                className={`flex-1 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all ${
+                  loteModo === 'importar' ? 'bg-white text-brandPrimary shadow-sm' : 'text-ink/50 hover:text-ink/80'
+                }`}
+              >
+                📋 Importar tal cual
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoteModo('generar')}
+                className={`flex-1 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all ${
+                  loteModo === 'generar' ? 'bg-white text-brandPrimary shadow-sm' : 'text-ink/50 hover:text-ink/80'
+                }`}
+              >
+                ✨ Adaptar con IA
+              </button>
+            </div>
+            <p className="text-xs text-ink/50 font-bold -mt-3">
+              {loteModo === 'importar'
+                ? 'Cada pregunta del cuestionario se convierte en una actividad independiente (se ignoran los contadores de abajo).'
+                : 'La IA adaptará el texto a los tipos y cantidades que elijas con los contadores de abajo.'}
+            </p>
             <div>
-              <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-2 block flex items-center justify-between">
-                <span>Cuestionario en lote o Resumen de texto</span>
-                <span className="text-xs text-ink/40 font-bold tracking-normal normal-case">La IA adaptará el texto a los tipos seleccionados</span>
+              <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-2 block">
+                Cuestionario en lote o Resumen de texto
               </label>
               <textarea
                 className="field min-h-[220px] font-mono text-sm leading-relaxed p-4 bg-ink/[0.01]"
