@@ -10,6 +10,23 @@ import { publishToBank } from '../../services/bankService.js';
 
 const CONTADORES_INICIAL = Object.fromEntries(TIPOS_LISTA.map(t => [t.key, 0]));
 
+// Deriva un título legible a partir del contenido (1ª actividad) cuando el
+// docente no escribe uno, para no guardar todo como "Evaluación de Texto".
+function derivarTitulo(actividades) {
+  if (!Array.isArray(actividades) || actividades.length === 0) return '';
+  const a = actividades[0] || {};
+  let texto = a.pregunta || a.enunciado || a.instruccion || a.oracion || a.pasaje || '';
+  texto = String(texto)
+    .replace(/^[\s.\-–—)\]]+/, '')   // puntuación inicial sobrante
+    .replace(/^\d+[.)]\s*/, '')        // numeración "1." o "1)"
+    .trim();
+  if (!texto) return '';
+  if (texto.length > 55) {
+    texto = texto.slice(0, 55).replace(/\s+\S*$/, '') + '…';
+  }
+  return texto;
+}
+
 // Grados por categoría (opcional) y niveles de dificultad.
 const GRADOS = {
   primaria: ['Preescolar', '1°', '2°', '3°', '4°', '5°'],
@@ -108,7 +125,8 @@ export default function Setup({ onCreated }) {
       }
       setActividades(resultado);
       if (!tema.trim()) {
-        setTema(temaFinal);
+        // Si no hay título, derivarlo del contenido en vez del genérico.
+        setTema(derivarTitulo(resultado) || temaFinal);
       }
       setPaso('revisando');
     } catch (e) {
@@ -310,7 +328,7 @@ export default function Setup({ onCreated }) {
           <div className="space-y-6 mb-8 animate-fade-in">
             <div>
               <label className="font-bold text-sm tracking-widest uppercase text-ink/60 mb-2 block">
-                Título o Tema de la evaluación (Opcional)
+                Nombre de la evaluación
               </label>
               <input
                 className="field text-lg"
@@ -319,6 +337,9 @@ export default function Setup({ onCreated }) {
                 placeholder="Ej. Magnitudes Eléctricas, Ley de Ohm..."
                 disabled={cargando}
               />
+              <p className="text-xs text-ink/40 font-bold mt-1">
+                Con este nombre se guardará en el banco y en tus salas. Si lo dejas vacío, se tomará del contenido.
+              </p>
             </div>
             {/* Submodo del lote: importar tal cual vs adaptar con IA */}
             <div className="flex gap-2 p-1 bg-mist/40 rounded-xl">
