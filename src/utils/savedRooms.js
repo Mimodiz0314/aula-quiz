@@ -34,3 +34,41 @@ export function reemplazarSalas(uid, lista) {
     /* ignore */
   }
 }
+
+// ---------------------------------------------------------------------------
+// CONTENIDO COMPLETO DE SALAS (offline) — respaldado en IndexedDB
+// Los punteros de arriba (localStorage) solo dicen "qué pin existe". Esto guarda
+// el cuestionario COMPLETO (preguntas + meta) para preparar/reabrir sin internet
+// y reutilizar en futuras sesiones. Es aditivo: no toca la API de punteros.
+// ---------------------------------------------------------------------------
+
+/** Guarda el contenido completo de un cuestionario para reutilizarlo offline. */
+export async function guardarContenidoSala(uid, { pin, preguntas, tema, grado, dificultad }) {
+  if (!pin) return;
+  const store = await import('../services/localStore.js');
+  await store.putContenido(uid || 'anon', pin, {
+    preguntas: preguntas || [],
+    tema: tema || '',
+    grado: grado || '',
+    dificultad: dificultad || '',
+    guardado_en: Date.now(),
+  });
+}
+
+/** Recupera el contenido completo de un cuestionario guardado offline. */
+export async function obtenerContenidoSala(uid, pin) {
+  const store = await import('../services/localStore.js');
+  return store.getContenido(uid || 'anon', pin);
+}
+
+/** Lista todos los cuestionarios guardados offline por el docente. */
+export async function listarContenidoLocal(uid) {
+  const store = await import('../services/localStore.js');
+  return store.getAllContenido(uid || 'anon');
+}
+
+/** Elimina un cuestionario guardado offline. */
+export async function eliminarContenidoSala(uid, pin) {
+  const store = await import('../services/localStore.js');
+  await store.deleteContenido(uid || 'anon', pin);
+}

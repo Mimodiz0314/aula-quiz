@@ -5,6 +5,9 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import { db, app } from '../../firebase/config.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useNavigate } from 'react-router-dom';
+import TabBank from './TabBank.jsx';
+import TabForums from './TabForums.jsx';
+import TabAI from './TabAI.jsx';
 
 export default function AdminPanel() {
   const { userData, logout, user, impersonate } = useAuth();
@@ -17,6 +20,7 @@ export default function AdminPanel() {
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [accion, setAccion] = useState({ tipo: null, uid: null });
   const [mensaje, setMensaje] = useState('');
+  const [activeTab, setActiveTab] = useState('usuarios');
 
   function handleImpersonate(docente) {
     impersonate(docente);
@@ -85,7 +89,7 @@ export default function AdminPanel() {
       <header className="bg-white border-b border-mist px-6 md:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="font-black text-2xl italic tracking-tighter">
-            Aula<span className="text-kahootBlue">!</span>
+            Aula<span className="text-brandPrimary">!</span>
           </div>
           <span className="hidden md:inline font-bold text-xs tracking-widest uppercase text-ink/40 bg-ink/5 px-3 py-1 rounded-full">
             Panel Administrador
@@ -102,18 +106,47 @@ export default function AdminPanel() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 md:px-12 py-10">
+        <div className="flex gap-4 mb-8 bg-white p-2 rounded-2xl shadow-sm border border-mist/50">
+          <button 
+            onClick={() => setActiveTab('usuarios')}
+            className={`flex-1 font-bold py-3 rounded-xl transition-colors ${activeTab === 'usuarios' ? 'bg-ink text-white' : 'text-ink/60 hover:bg-gameBg'}`}
+          >
+            👥 Usuarios
+          </button>
+          <button 
+            onClick={() => setActiveTab('banco')}
+            className={`flex-1 font-bold py-3 rounded-xl transition-colors ${activeTab === 'banco' ? 'bg-ink text-white' : 'text-ink/60 hover:bg-gameBg'}`}
+          >
+            📚 Banco Comunitario
+          </button>
+          <button 
+            onClick={() => setActiveTab('foros')}
+            className={`flex-1 font-bold py-3 rounded-xl transition-colors ${activeTab === 'foros' ? 'bg-ink text-white' : 'text-ink/60 hover:bg-gameBg'}`}
+          >
+            💬 Foros
+          </button>
+          <button 
+            onClick={() => setActiveTab('ia')}
+            className={`flex-1 font-bold py-3 rounded-xl transition-colors ${activeTab === 'ia' ? 'bg-ink text-white' : 'text-ink/60 hover:bg-gameBg'}`}
+          >
+            🧠 IA
+          </button>
+        </div>
+
         {mensaje && (
-          <div className="mb-6 bg-kahootGreen/10 border-l-4 border-kahootGreen p-4 rounded-r-xl font-bold text-sm text-kahootGreen">
+          <div className="mb-6 bg-brandSuccess/10 border-l-4 border-brandSuccess p-4 rounded-r-xl font-bold text-sm text-brandSuccess">
             {mensaje}
           </div>
         )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-          <StatCard label="Total Docentes" value={soloDocentes.length} />
-          <StatCard label="Activos" value={activos} color="text-kahootGreen" />
-          <StatCard label="Inactivos" value={soloDocentes.length - activos} color="text-deny" />
-        </div>
+        {activeTab === 'usuarios' && (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+              <StatCard label="Total Docentes" value={soloDocentes.length} />
+              <StatCard label="Activos" value={activos} color="text-brandSuccess" />
+              <StatCard label="Inactivos" value={soloDocentes.length - activos} color="text-deny" />
+            </div>
 
         {/* Tabla */}
         <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-mist/50">
@@ -129,7 +162,7 @@ export default function AdminPanel() {
               </button>
               <button
                 onClick={() => setModalCrear(true)}
-                className="btn-primary bg-kahootBlue text-sm px-6 py-3"
+                className="btn-primary bg-brandPrimary text-sm px-6 py-3"
               >
                 + Agregar Docente
               </button>
@@ -143,7 +176,7 @@ export default function AdminPanel() {
           ) : errorCarga ? (
             <div className="py-10 px-8 text-center">
               <p className="font-bold text-deny mb-4">{errorCarga}</p>
-              <button onClick={cargarDocentes} className="btn-primary bg-kahootBlue px-6 py-3 text-sm">
+              <button onClick={cargarDocentes} className="btn-primary bg-brandPrimary px-6 py-3 text-sm">
                 Reintentar
               </button>
             </div>
@@ -173,7 +206,7 @@ export default function AdminPanel() {
                         <td className="px-8 py-4">
                           <div className="font-black text-sm">{d.nombre}</div>
                           {esAdmin && (
-                            <span className="text-xs font-bold text-kahootBlue/60 uppercase tracking-wider">
+                            <span className="text-xs font-bold text-brandPrimary/60 uppercase tracking-wider">
                               Administrador
                             </span>
                           )}
@@ -181,13 +214,13 @@ export default function AdminPanel() {
                         <td className="px-4 py-4 font-bold text-sm text-ink/60">{d.email}</td>
                         <td className="px-4 py-4">
                           {esAdmin ? (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-kahootBlue/10 text-kahootBlue">
+                            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-brandPrimary/10 text-brandPrimary">
                               Admin
                             </span>
                           ) : (
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                               d.activo
-                                ? 'bg-kahootGreen/10 text-kahootGreen'
+                                ? 'bg-brandSuccess/10 text-brandSuccess'
                                 : 'bg-deny/10 text-deny'
                             }`}>
                               {d.activo ? 'Activo' : 'Inactivo'}
@@ -211,14 +244,14 @@ export default function AdminPanel() {
                               <AccionBtn
                                 onClick={() => toggleActivo(d)}
                                 disabled={accion.uid === d.uid}
-                                color={d.activo ? 'text-deny' : 'text-kahootGreen'}
+                                color={d.activo ? 'text-deny' : 'text-brandSuccess'}
                               >
                                 {accion.uid === d.uid && accion.tipo === 'toggle'
                                   ? '…'
                                   : d.activo ? 'Desactivar' : 'Activar'}
                               </AccionBtn>
                             )}
-                            <AccionBtn onClick={() => setModalPassword(d)} color="text-kahootBlue">
+                            <AccionBtn onClick={() => setModalPassword(d)} color="text-brandPrimary">
                               Contraseña
                             </AccionBtn>
                             {!esAdmin && (
@@ -240,6 +273,12 @@ export default function AdminPanel() {
             </div>
           )}
         </div>
+        </>
+        )}
+        
+        {activeTab === 'banco' && <TabBank />}
+        {activeTab === 'foros' && <TabForums />}
+        {activeTab === 'ia' && <TabAI />}
       </div>
 
       {modalCrear && (
@@ -386,14 +425,14 @@ function ModalCrearDocente({ onClose, onCreado }) {
             </div>
           </CampoModal>
           {error && <p className="text-deny font-bold text-sm">{error}</p>}
-          {exito && <p className="text-kahootGreen font-bold text-sm">{exito}</p>}
+          {exito && <p className="text-brandSuccess font-bold text-sm">{exito}</p>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 py-3 rounded-xl font-bold border-2 border-mist hover:bg-gameBg transition-colors">
               Cancelar
             </button>
             <button type="submit" disabled={cargando}
-              className="flex-1 btn-primary bg-kahootBlue py-3">
+              className="flex-1 btn-primary bg-brandPrimary py-3">
               {cargando ? 'Creando…' : 'Crear Docente'}
             </button>
           </div>
@@ -442,7 +481,7 @@ function ModalEnviarPassword({ docente, onClose, onExito }) {
             Cancelar
           </button>
           <button onClick={handleEnviar} disabled={cargando}
-            className="flex-1 btn-primary bg-kahootBlue py-3">
+            className="flex-1 btn-primary bg-brandPrimary py-3">
             {cargando ? 'Enviando…' : 'Enviar link al correo'}
           </button>
         </div>

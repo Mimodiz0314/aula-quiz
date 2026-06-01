@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { esAcierto } from '../../utils/grading.js';
-import { fusionarClave } from '../../utils/clave.js';
+import { fusionarClave, ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../../utils/clave.js';
 
 function parseJSON(val) {
   if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } }
@@ -29,7 +29,7 @@ export default function Reveal({ sesion, yo }) {
 
   return (
     <main className={`min-h-screen flex flex-col items-center justify-center p-6 text-center transition-colors duration-300 ${
-      sinRespuesta ? 'bg-gameBg text-ink' : acerto ? 'bg-kahootGreen text-white' : 'bg-kahootRed text-white'
+      sinRespuesta ? 'bg-gameBg text-ink' : acerto ? 'bg-brandSuccess text-white' : 'bg-brandDanger text-white'
     }`}>
       <header className="absolute top-4 left-4">
         <button
@@ -97,8 +97,8 @@ function PuntajeBanner({ yo, sinRespuesta }) {
         </p>
         <p className="text-3xl font-black tabular-nums flex items-center gap-2">
           #{puesto || '-'}
-          {delta > 0 && <span className="text-kahootGreen text-base">▲{delta}</span>}
-          {delta < 0 && <span className="text-kahootRed text-base">▼{-delta}</span>}
+          {delta > 0 && <span className="text-brandSuccess text-base">▲{delta}</span>}
+          {delta < 0 && <span className="text-brandDanger text-base">▼{-delta}</span>}
         </p>
       </div>
       <div className="text-right">
@@ -179,7 +179,10 @@ function CorrectaDisplay({ actividad, sinRespuesta }) {
 
   // rompecabezas_ideas / paso_a_paso
   if (tipo === 'rompecabezas_ideas' || tipo === 'paso_a_paso') {
-    const items = tipo === 'rompecabezas_ideas' ? actividad.fragmentos : actividad.pasos;
+    const items = ordenarPorClave(
+      tipo === 'rompecabezas_ideas' ? actividad.fragmentos : actividad.pasos,
+      actividad.orden
+    );
     return (
       <div className={base}>
         <p className={titleCls}>Orden correcto</p>
@@ -199,11 +202,12 @@ function CorrectaDisplay({ actividad, sinRespuesta }) {
 
   // parejas_logicas
   if (tipo === 'parejas_logicas') {
+    const filas = parejasCorrectas(actividad);
     return (
       <div className={base}>
         <p className={titleCls}>Parejas correctas</p>
         <div className="space-y-1.5">
-          {actividad.pares.map((par, i) => (
+          {filas.map((par, i) => (
             <div key={i} className={`flex items-center gap-2 rounded-lg p-2 text-sm ${sinRespuesta ? 'bg-ink/5' : 'bg-white/10'}`}>
               <span className="font-bold flex-1">{par.izquierda}</span>
               <span className="opacity-50">↔</span>
@@ -217,6 +221,7 @@ function CorrectaDisplay({ actividad, sinRespuesta }) {
 
   // clasificador
   if (tipo === 'clasificador') {
+    const grupos = clasificacionCorrecta(actividad);
     return (
       <div className={base}>
         <p className={titleCls}>Clasificación correcta</p>
@@ -224,7 +229,7 @@ function CorrectaDisplay({ actividad, sinRespuesta }) {
           {actividad.categorias.map((cat, ci) => (
             <div key={ci} className={`p-2 rounded-xl ${sinRespuesta ? 'bg-ink/5' : 'bg-white/10'}`}>
               <p className="font-black text-xs mb-1">{cat.nombre}</p>
-              {cat.items.map((item, ii) => (
+              {(grupos[ci] || []).map((item, ii) => (
                 <p key={ii} className="text-xs font-bold opacity-80">{item}</p>
               ))}
             </div>

@@ -33,33 +33,44 @@ export function esAcierto(actividad, respuesta) {
     case 'caza_intruso':
       return Number(actividad.intruso_idx) === Number(respuesta);
 
-    case 'rompecabezas_ideas': {
-      const elegido = parseJSON(respuesta);
-      if (!Array.isArray(elegido)) return false;
-      const n = actividad.fragmentos?.length ?? 0;
-      return elegido.length === n && elegido.every((v, i) => Number(v) === i);
-    }
-
+    case 'rompecabezas_ideas':
     case 'paso_a_paso': {
+      // respuesta: secuencia de índices públicos en el orden elegido por el alumno.
       const elegido = parseJSON(respuesta);
       if (!Array.isArray(elegido)) return false;
-      const n = actividad.pasos?.length ?? 0;
-      return elegido.length === n && elegido.every((v, i) => Number(v) === i);
+      // Nuevo (contenido barajado): orden[pubIdx] = posición correcta de ese ítem.
+      if (Array.isArray(actividad.orden)) {
+        const orden = actividad.orden;
+        return elegido.length === orden.length && elegido.every((pubIdx, pos) => Number(orden[pubIdx]) === pos);
+      }
+      // Retrocompat (orden original = correcto): elegido[i] === i.
+      const items = actividad.fragmentos ?? actividad.pasos ?? [];
+      return elegido.length === items.length && elegido.every((v, i) => Number(v) === i);
     }
 
     case 'parejas_logicas': {
-      // respuesta: JSON array donde elegido[i] = origIdx del elemento derecha
-      // emparejado al elemento izquierda[i]. Correcto cuando elegido[i] === i.
+      // respuesta: elegido[i] = índice público de la derecha emparejada a izquierda i.
       const elegido = parseJSON(respuesta);
       if (!Array.isArray(elegido)) return false;
+      // Nuevo (derechas barajadas): mapeo[i] = índice público correcto para izquierda i.
+      if (Array.isArray(actividad.mapeo)) {
+        const mapeo = actividad.mapeo;
+        return elegido.length === mapeo.length && elegido.every((v, i) => Number(v) === Number(mapeo[i]));
+      }
+      // Retrocompat: elegido[i] === i.
       return elegido.every((v, i) => Number(v) === i);
     }
 
     case 'clasificador': {
-      // respuesta: JSON array donde asignado[i] = índice de categoría (0 o 1)
-      // para el ítem i en la lista aplanada [...cat0.items, ...cat1.items].
+      // respuesta: asignado[i] = categoría (0/1) del ítem i en [...cat0.items, ...cat1.items].
       const asignado = parseJSON(respuesta);
       if (!Array.isArray(asignado)) return false;
+      // Nuevo (ítems barajados): asign[i] = categoría correcta del ítem i.
+      if (Array.isArray(actividad.asign)) {
+        const asign = actividad.asign;
+        return asignado.length === asign.length && asignado.every((v, i) => Number(v) === Number(asign[i]));
+      }
+      // Retrocompat (agrupados): los primeros n0 son cat0, el resto cat1.
       const n0 = actividad.categorias?.[0]?.items?.length ?? 0;
       const n1 = actividad.categorias?.[1]?.items?.length ?? 0;
       if (asignado.length !== n0 + n1) return false;

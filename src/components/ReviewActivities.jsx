@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { TIPOS, TIPOS_LISTA } from '../types/activityTypes.js';
 import WorksheetPrint from './WorksheetPrint.jsx';
 
-const OPTION_COLORS = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGreen'];
+const OPTION_COLORS = ['bg-brandDanger', 'bg-brandPrimary', 'bg-brandAccent', 'bg-brandSuccess'];
 
-export default function ReviewActivities({ initialActividades, onConfirm, onCancel, tema = '' }) {
+export default function ReviewActivities({ initialActividades, onConfirm, onSave, onCancel, tema = '', grado = '', dificultad = '' }) {
   const [actividades, setActividades] = useState(initialActividades);
   const [modalAgregar, setModalAgregar] = useState(false);
   const [imprimir, setImprimir] = useState(false);
+  const [publicarBanco, setPublicarBanco] = useState(false);
 
   function update(index, nuevoValor) {
     setActividades(prev => {
@@ -45,13 +46,35 @@ export default function ReviewActivities({ initialActividades, onConfirm, onCanc
           >
             🖨️ Imprimir / PDF
           </button>
-          <button
-            onClick={() => onConfirm(actividades)}
-            disabled={actividades.length === 0}
-            className="btn-primary bg-kahootGreen disabled:opacity-40"
-          >
-            Iniciar Sala ✨
-          </button>
+          <div className="flex flex-col md:flex-row items-center gap-3 bg-brandPrimary/5 px-4 rounded-xl border border-brandPrimary/10">
+            <label className="flex items-center gap-2 text-xs font-bold text-ink/60 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={publicarBanco} 
+                onChange={e => setPublicarBanco(e.target.checked)} 
+                className="w-4 h-4 rounded text-brandPrimary focus:ring-brandPrimary accent-brandPrimary"
+              />
+              Publicar con mis datos
+            </label>
+            <div className="flex gap-2">
+              {onSave && (
+                <button
+                  onClick={() => onSave(actividades, publicarBanco)}
+                  disabled={actividades.length === 0}
+                  className="btn-secondary text-brandPrimary border-brandPrimary/30 hover:bg-brandPrimary/10 disabled:opacity-40"
+                >
+                  💾 Guardar
+                </button>
+              )}
+              <button
+                onClick={() => onConfirm(actividades, publicarBanco)}
+                disabled={actividades.length === 0}
+                className="btn-primary bg-brandSuccess disabled:opacity-40"
+              >
+                Iniciar Sala ✨
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -59,6 +82,8 @@ export default function ReviewActivities({ initialActividades, onConfirm, onCanc
         <WorksheetPrint
           actividades={actividades}
           tema={tema}
+          grado={grado}
+          dificultad={dificultad}
           onClose={() => setImprimir(false)}
         />
       )}
@@ -211,7 +236,7 @@ function SeleccionClasicaEditor({ a, onChange }) {
                 name={`correcta-${a.pregunta?.slice(0, 10)}-${i}`}
                 checked={a.correcta === i}
                 onChange={() => setCorrecta(i)}
-                className="w-4 h-4 accent-kahootGreen cursor-pointer"
+                className="w-4 h-4 accent-brandSuccess cursor-pointer"
               />
               <label className="text-xs font-bold text-ink/50 uppercase">
                 Opción {i + 1} {a.correcta === i && '· Correcta ✓'}
@@ -313,7 +338,7 @@ function RompecabezasEditor({ a, onChange }) {
         </div>
         <button
           onClick={agregar}
-          className="mt-2 text-sm font-bold text-kahootBlue hover:underline"
+          className="mt-2 text-sm font-bold text-brandPrimary hover:underline"
         >
           + Añadir fragmento
         </button>
@@ -374,7 +399,7 @@ function ParejasEditor({ a, onChange }) {
             </div>
           ))}
         </div>
-        <button onClick={agregar} className="mt-2 text-sm font-bold text-kahootBlue hover:underline">
+        <button onClick={agregar} className="mt-2 text-sm font-bold text-brandPrimary hover:underline">
           + Añadir pareja
         </button>
       </Campo>
@@ -416,10 +441,10 @@ function CazaIntrusoEditor({ a, onChange }) {
                 name={`intruso-${i}-${a.instruccion?.slice(0, 10)}`}
                 checked={a.intruso_idx === i}
                 onChange={() => onChange({ ...a, intruso_idx: i })}
-                className="w-4 h-4 accent-kahootRed cursor-pointer shrink-0"
+                className="w-4 h-4 accent-brandDanger cursor-pointer shrink-0"
               />
               <input
-                className={`field flex-1 ${a.intruso_idx === i ? 'border-kahootRed/60 bg-red-50' : ''}`}
+                className={`field flex-1 ${a.intruso_idx === i ? 'border-brandDanger/60 bg-red-50' : ''}`}
                 value={el}
                 onChange={e => setElemento(i, e.target.value)}
                 placeholder={`Elemento ${i + 1}`}
@@ -430,7 +455,7 @@ function CazaIntrusoEditor({ a, onChange }) {
             </div>
           ))}
         </div>
-        <button onClick={agregar} className="mt-2 text-sm font-bold text-kahootBlue hover:underline">
+        <button onClick={agregar} className="mt-2 text-sm font-bold text-brandPrimary hover:underline">
           + Añadir elemento
         </button>
       </Campo>
@@ -503,7 +528,7 @@ function ClasificadorEditor({ a, onChange }) {
             </div>
             <button
               onClick={() => agregarItem(ci)}
-              className="text-xs font-bold text-kahootBlue hover:underline"
+              className="text-xs font-bold text-brandPrimary hover:underline"
             >
               + Añadir elemento
             </button>
@@ -566,7 +591,7 @@ function PalabrasPierdidasEditor({ a, onChange }) {
               </div>
             ))}
           </div>
-          <button onClick={agregarBanco} className="mt-2 text-xs font-bold text-kahootBlue hover:underline">
+          <button onClick={agregarBanco} className="mt-2 text-xs font-bold text-brandPrimary hover:underline">
             + Añadir palabra
           </button>
         </Campo>
@@ -589,7 +614,7 @@ function PalabrasPierdidasEditor({ a, onChange }) {
               </div>
             ))}
           </div>
-          <button onClick={agregarRespuesta} className="mt-2 text-xs font-bold text-kahootBlue hover:underline">
+          <button onClick={agregarRespuesta} className="mt-2 text-xs font-bold text-brandPrimary hover:underline">
             + Añadir respuesta
           </button>
         </Campo>
@@ -641,7 +666,7 @@ function PasoAPasoEditor({ a, onChange }) {
             </div>
           ))}
         </div>
-        <button onClick={agregar} className="mt-2 text-sm font-bold text-kahootBlue hover:underline">
+        <button onClick={agregar} className="mt-2 text-sm font-bold text-brandPrimary hover:underline">
           + Añadir paso
         </button>
       </Campo>
@@ -722,7 +747,7 @@ function DetectiveTextoEditor({ a, onChange }) {
                 name={`correcta-detective-${a.pregunta?.slice(0, 10)}-${i}`}
                 checked={a.correcta === i}
                 onChange={() => onChange({ ...a, correcta: i })}
-                className="w-4 h-4 accent-kahootGreen cursor-pointer"
+                className="w-4 h-4 accent-brandSuccess cursor-pointer"
               />
               <label className="text-xs font-bold text-ink/50 uppercase">
                 Opción {i + 1} {a.correcta === i && '· Correcta ✓'}
@@ -764,7 +789,7 @@ function ModalSelectorTipo({ onSelect, onClose }) {
             <button
               key={key}
               onClick={() => onSelect(key)}
-              className="flex items-center gap-3 p-4 rounded-2xl border-2 border-mist hover:border-kahootBlue hover:shadow-sm hover:bg-kahootBlue/5 transition-all text-left"
+              className="flex items-center gap-3 p-4 rounded-2xl border-2 border-mist hover:border-brandPrimary hover:shadow-sm hover:bg-brandPrimary/5 transition-all text-left"
             >
               <span className="text-2xl shrink-0">{emoji}</span>
               <div className="min-w-0">

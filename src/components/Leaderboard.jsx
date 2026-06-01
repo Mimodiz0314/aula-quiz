@@ -21,8 +21,8 @@ function Delta({ est }) {
   const actual = est.puesto;
   if (!previo || !actual) return <span className="w-8" />;
   const cambio = previo - actual; // positivo = subió
-  if (cambio > 0) return <span className="text-kahootGreen font-black text-sm w-8 text-center">▲{cambio}</span>;
-  if (cambio < 0) return <span className="text-kahootRed font-black text-sm w-8 text-center">▼{-cambio}</span>;
+  if (cambio > 0) return <span className="text-brandSuccess font-black text-sm w-8 text-center">▲{cambio}</span>;
+  if (cambio < 0) return <span className="text-brandDanger font-black text-sm w-8 text-center">▼{-cambio}</span>;
   return <span className="text-ink/30 font-black text-sm w-8 text-center">–</span>;
 }
 
@@ -43,7 +43,7 @@ export default function Leaderboard({ estudiantes, top = 5, miId = null }) {
             key={est.id}
             className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-sm animate-slide-up ${
               esYo
-                ? 'bg-kahootBlue text-white ring-2 ring-kahootBlue'
+                ? 'bg-brandPrimary text-white ring-2 ring-brandPrimary'
                 : podio
                   ? 'bg-white text-ink'
                   : 'bg-white/90 text-ink'

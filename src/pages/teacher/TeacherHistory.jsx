@@ -47,11 +47,11 @@ export default function TeacherHistory({ onClose }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {historial.map((sesion) => (
-            <div key={sesion.pin} className="p-6 bg-gameBg border-2 border-mist rounded-2xl flex flex-col justify-between hover:border-kahootBlue transition-all group">
+            <div key={sesion.pin} className="p-6 bg-gameBg border-2 border-mist rounded-2xl flex flex-col justify-between hover:border-brandPrimary transition-all group">
               <div className="mb-4">
                 <div className="flex items-baseline justify-between mb-2">
-                  <span className="font-black text-3xl text-kahootBlue tracking-wider">{sesion.pin}</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white ${sesion.estado_actual === ESTADOS.RESULTADOS_FINALES ? 'bg-kahootGreen' : 'bg-kahootYellow text-ink'}`}>
+                  <span className="font-black text-3xl text-brandPrimary tracking-wider">{sesion.pin}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white ${sesion.estado_actual === ESTADOS.RESULTADOS_FINALES ? 'bg-brandSuccess' : 'bg-brandAccent text-ink'}`}>
                     {sesion.estado_actual === ESTADOS.RESULTADOS_FINALES ? 'Terminado' : 'Activo'}
                   </span>
                 </div>
@@ -65,7 +65,7 @@ export default function TeacherHistory({ onClose }) {
               <div className="flex gap-2">
                 <button
                   onClick={() => navigate(`/docente/sesion/${sesion.pin}`)}
-                  className="btn-primary flex-1 bg-kahootBlue opacity-90 group-hover:opacity-100"
+                  className="btn-primary flex-1 bg-brandPrimary opacity-90 group-hover:opacity-100"
                 >
                   Abrir Sala
                 </button>

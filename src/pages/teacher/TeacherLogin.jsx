@@ -11,6 +11,12 @@ import {
 import { useAuth } from '../../hooks/useAuth.js';
 import { auth, db } from '../../firebase/config.js';
 
+// Detecta si corre como APK nativo de Capacitor
+const esCapacitor = () =>
+  typeof window !== 'undefined' &&
+  (window.Capacitor?.isNativePlatform?.() ||
+    window.location.protocol === 'capacitor:');
+
 export default function TeacherLogin() {
   const { user, role, loading, login, registrar, refreshUserData } = useAuth();
   const navigate = useNavigate();
@@ -31,6 +37,8 @@ export default function TeacherLogin() {
   const [exito, setExito] = useState('');
 
   const desactivado = searchParams.get('desactivado') === '1';
+  const enAPK = esCapacitor();
+
   useEffect(() => {
     if (desactivado) setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
   }, [desactivado]);
@@ -56,7 +64,7 @@ export default function TeacherLogin() {
     setExito('');
   }
 
-  // ── Ingresar con Google ──────────────────────────────────────────────────
+  // ── Ingresar con Google (solo disponible en el navegador web) ────────────
   async function handleGoogle() {
     setError('');
     setCargando(true);
@@ -101,7 +109,7 @@ export default function TeacherLogin() {
     }
   }
 
-  // ── Establecer contraseña via Google (sin email) ─────────────────────────
+  // ── Establecer contraseña via Google (solo en navegador web) ────────────
   async function handleEstablecerConGoogle(e) {
     e.preventDefault();
     if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
@@ -217,26 +225,39 @@ export default function TeacherLogin() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="font-black text-4xl italic tracking-tighter mb-1">
-            Aula<span className="text-kahootBlue">!</span>
+            Aula<span className="text-brandPrimary">!</span>
           </div>
           <p className="font-bold text-sm tracking-widest uppercase text-ink/40">
             Acceso Docente
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-sm border-t-8 border-kahootBlue p-8 md:p-10">
+        <div className="bg-white rounded-3xl shadow-sm border-t-8 border-brandPrimary p-8 md:p-10">
 
-          {/* ── Botón Google ── */}
-          <div className="mb-6">
-            <button
-              onClick={handleGoogle}
-              disabled={cargando}
-              className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl border-2 border-mist font-bold text-ink hover:bg-gameBg transition-colors disabled:opacity-50"
-            >
-              <GoogleIcon />
-              {cargando ? 'Verificando…' : 'Ingresar con Google'}
-            </button>
-          </div>
+          {/* ── Botón Google: solo disponible en el navegador web ── */}
+          {enAPK ? (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-xl shrink-0">📱</span>
+              <div>
+                <p className="font-bold text-sm text-amber-800">Acceso desde la app</p>
+                <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                  Ingresa con tu <strong>correo y contraseña</strong> abajo.
+                  El acceso con Google está disponible en la versión web.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <button
+                onClick={handleGoogle}
+                disabled={cargando}
+                className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl border-2 border-mist font-bold text-ink hover:bg-gameBg transition-colors disabled:opacity-50"
+              >
+                <GoogleIcon />
+                {cargando ? 'Verificando…' : 'Ingresar con Google'}
+              </button>
+            </div>
+          )}
 
           <Divider />
 
@@ -256,7 +277,7 @@ export default function TeacherLogin() {
             paso === 'establecer' ? (
               /* ── Paso: establecer contraseña con Google ── */
               <form onSubmit={handleEstablecerConGoogle} className="space-y-5">
-                <div className="bg-kahootBlue/5 border border-kahootBlue/20 rounded-2xl p-4 mb-2">
+                <div className="bg-brandPrimary/5 border border-brandPrimary/20 rounded-2xl p-4 mb-2">
                   <p className="font-bold text-sm text-ink/70 leading-relaxed">
                     Haz clic en el botón y verifica con Google. Inmediatamente después tu contraseña quedará guardada — sin esperar ningún correo.
                   </p>
@@ -294,7 +315,7 @@ export default function TeacherLogin() {
                 {exito && <Exito>{exito}</Exito>}
 
                 <button type="submit" disabled={cargando}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl bg-kahootBlue text-white font-bold hover:bg-kahootBlue/90 transition-colors disabled:opacity-50">
+                  className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl bg-brandPrimary text-white font-bold hover:bg-brandPrimary/90 transition-colors disabled:opacity-50">
                   <GoogleIcon white />
                   {cargando ? 'Verificando con Google…' : 'Verificar con Google y guardar contraseña'}
                 </button>
@@ -340,7 +361,7 @@ export default function TeacherLogin() {
                 </Campo>
                 {error && <Alerta>{error}</Alerta>}
                 {exito && <Exito>{exito}</Exito>}
-                <button type="submit" disabled={cargando} className="btn-primary w-full bg-kahootBlue">
+                <button type="submit" disabled={cargando} className="btn-primary w-full bg-brandPrimary">
                   {cargando ? 'Enviando…' : 'Enviar link al correo'}
                 </button>
                 <button type="button" onClick={() => setPaso('establecer')}
@@ -383,7 +404,7 @@ export default function TeacherLogin() {
                 </Campo>
                 {error && <Alerta>{error}</Alerta>}
                 {exito && <Exito>{exito}</Exito>}
-                <button type="submit" disabled={cargando} className="btn-primary w-full bg-kahootBlue">
+                <button type="submit" disabled={cargando} className="btn-primary w-full bg-brandPrimary">
                   {cargando ? 'Verificando…' : 'Entrar'}
                 </button>
 
@@ -391,7 +412,7 @@ export default function TeacherLogin() {
                 <button
                   type="button"
                   onClick={() => { setPaso('establecer'); setError(''); setExito(''); }}
-                  className="w-full py-3 rounded-xl border-2 border-kahootBlue/30 bg-kahootBlue/5 font-bold text-sm text-kahootBlue hover:bg-kahootBlue/10 transition-colors"
+                  className="w-full py-3 rounded-xl border-2 border-brandPrimary/30 bg-brandPrimary/5 font-bold text-sm text-brandPrimary hover:bg-brandPrimary/10 transition-colors"
                 >
                   ¿Primera vez con correo? Establece tu contraseña
                 </button>
@@ -432,12 +453,30 @@ export default function TeacherLogin() {
               </Campo>
               {error && <Alerta>{error}</Alerta>}
               {exito && <Exito>{exito}</Exito>}
-              <button type="submit" disabled={cargando} className="btn-primary w-full bg-kahootBlue">
+              <button type="submit" disabled={cargando} className="btn-primary w-full bg-brandPrimary">
                 {cargando ? 'Creando cuenta…' : 'Crear Cuenta'}
               </button>
             </form>
           )}
 
+        </div>
+        
+        <div className="text-center mt-8">
+          <button 
+            onClick={() => navigate('/')} 
+            className="inline-flex items-center justify-center gap-2 font-black text-sm text-ink/70 bg-white border-2 border-mist/80 px-6 py-3 rounded-2xl shadow-[0_4px_0_0_#E6E2D8] hover:bg-mist/30 hover:text-ink hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#E6E2D8] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest"
+          >
+            ← Volver a Inicio
+          </button>
+        </div>
+
+        <div className="text-center mt-6">
+          <button 
+            onClick={() => navigate('/privacidad')} 
+            className="text-xs font-bold text-ink/40 hover:text-ink hover:underline transition-colors"
+          >
+            Términos y Política de Privacidad
+          </button>
         </div>
       </div>
     </main>
@@ -509,7 +548,7 @@ function Alerta({ children }) {
 
 function Exito({ children }) {
   return (
-    <div className="bg-green-50 border-l-4 border-kahootGreen p-4 rounded-r-lg text-kahootGreen font-bold text-sm">
+    <div className="bg-green-50 border-l-4 border-brandSuccess p-4 rounded-r-lg text-brandSuccess font-bold text-sm">
       {children}
     </div>
   );

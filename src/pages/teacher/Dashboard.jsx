@@ -205,7 +205,7 @@ export default function Dashboard({ pin, sesion }) {
           <button onClick={() => navigate('/')} className="btn-ghost no-print">⌂ Inicio</button>
           <button
             onClick={handleCerrar}
-            className="font-bold text-sm tracking-widest uppercase text-kahootBlue hover:text-kahootBlue/80 transition-colors no-print flex items-center gap-1.5"
+            className="font-bold text-sm tracking-widest uppercase text-brandPrimary hover:text-brandPrimary/80 transition-colors no-print flex items-center gap-1.5"
           >
             💾 Guardar y ver Historial
           </button>
@@ -214,7 +214,7 @@ export default function Dashboard({ pin, sesion }) {
           </div>
         </div>
         <div className="font-black text-xl italic tracking-tighter">
-          Aula<span className="text-kahootYellow">!</span>
+          Aula<span className="text-brandAccent">!</span>
         </div>
       </header>
 
@@ -241,11 +241,11 @@ export default function Dashboard({ pin, sesion }) {
             <div className="flex flex-col items-center flex-1 animate-slide-up z-10">
               <div className="text-5xl mb-2 animate-bounce">👑</div>
               <p className="font-black text-2xl mb-2 text-center break-words w-full px-2">{podio[0].nombre}</p>
-              <div className="bg-kahootYellow px-4 py-1 rounded-full text-ink font-black mb-4 shadow-md">
+              <div className="bg-brandAccent px-4 py-1 rounded-full text-ink font-black mb-4 shadow-md">
                 {tienePuntos ? `${podio[0].puntos.toLocaleString('es-CO')} pts` : podio[0].nota.toFixed(1)}
               </div>
-              <div className="bg-kahootYellow/20 w-full h-48 rounded-t-lg border-t-4 border-kahootYellow flex items-start justify-center pt-4 shadow-inner backdrop-blur-sm">
-                <span className="font-black text-5xl text-kahootYellow">1</span>
+              <div className="bg-brandAccent/20 w-full h-48 rounded-t-lg border-t-4 border-brandAccent flex items-start justify-center pt-4 shadow-inner backdrop-blur-sm">
+                <span className="font-black text-5xl text-brandAccent">1</span>
               </div>
             </div>
 
@@ -295,16 +295,16 @@ export default function Dashboard({ pin, sesion }) {
                         </span>
                       )}
                     </td>
-                    <td className={`py-4 px-4 font-black text-2xl text-right ${f.nota >= 3.0 ? 'text-kahootGreen' : 'text-kahootRed'}`}>
+                    <td className={`py-4 px-4 font-black text-2xl text-right ${f.nota >= 3.0 ? 'text-brandSuccess' : 'text-brandDanger'}`}>
                       {parseFloat(f.nota.toFixed(1))}
                     </td>
                     <td className="py-4 px-4 font-black text-right text-ink/70">
                       {total > 0 ? Math.round((f.aciertos / total) * 100) : 0}%
                     </td>
-                    <td className="py-4 px-4 font-bold text-right text-kahootGreen">
+                    <td className="py-4 px-4 font-bold text-right text-brandSuccess">
                       {f.aciertos}
                     </td>
-                    <td className="py-4 px-4 font-bold text-right text-kahootRed">
+                    <td className="py-4 px-4 font-bold text-right text-brandDanger">
                       {total - f.aciertos}
                     </td>
                   </tr>
@@ -320,10 +320,10 @@ export default function Dashboard({ pin, sesion }) {
         {/* Resumen y controles */}
         <aside className="flex flex-col gap-6">
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-4">
-            <Stat label="Estudiantes" value={filas.length} color="bg-kahootBlue" />
+            <Stat label="Estudiantes" value={filas.length} color="bg-brandPrimary" />
             <Stat label="Preguntas" value={total} color="bg-mist" textColor="text-ink" />
-            <Stat label="Promedio" value={promedio.toFixed(1)} color="bg-kahootYellow" textColor="text-ink" />
-            <Stat label="Aprobados" value={`${aprobados}/${filas.length}`} color="bg-kahootGreen" />
+            <Stat label="Promedio" value={promedio.toFixed(1)} color="bg-brandAccent" textColor="text-ink" />
+            <Stat label="Aprobados" value={`${aprobados}/${filas.length}`} color="bg-brandSuccess" />
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-3 no-print">
@@ -340,7 +340,7 @@ export default function Dashboard({ pin, sesion }) {
             
             <button 
               onClick={exportarExcel} 
-              className="btn-secondary w-full flex items-center justify-center gap-2 text-kahootGreen border-kahootGreen/30 hover:bg-kahootGreen/5"
+              className="btn-secondary w-full flex items-center justify-center gap-2 text-brandSuccess border-brandSuccess/30 hover:bg-brandSuccess/5"
             >
               📊 Descargar Excel
             </button>
@@ -356,7 +356,7 @@ export default function Dashboard({ pin, sesion }) {
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col gap-3 no-print">
             <button
               onClick={handleCerrar}
-              className="btn-primary bg-kahootGreen w-full flex items-center justify-center gap-2 text-white shadow-md hover:bg-kahootGreen/90 transition-all font-black"
+              className="btn-primary bg-brandSuccess w-full flex items-center justify-center gap-2 text-white shadow-md hover:bg-brandSuccess/90 transition-all font-black"
             >
               💾 Guardar y volver a Mi Panel
             </button>
@@ -368,7 +368,7 @@ export default function Dashboard({ pin, sesion }) {
       {mostrarConfirm && (
         <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col items-center text-center animate-scale-in">
-            <div className="w-16 h-16 bg-kahootBlue/10 rounded-full flex items-center justify-center text-3xl mb-6">
+            <div className="w-16 h-16 bg-brandPrimary/10 rounded-full flex items-center justify-center text-3xl mb-6">
               💾
             </div>
             <h3 className="font-black text-2xl mb-3 text-ink">¿Finalizar y guardar juego?</h3>
@@ -378,8 +378,8 @@ export default function Dashboard({ pin, sesion }) {
             
             {confirmando ? (
               <div className="flex flex-col items-center gap-3 py-2 w-full">
-                <div className="w-8 h-8 border-4 border-kahootBlue border-t-transparent rounded-full animate-spin" />
-                <span className="font-bold text-sm text-kahootBlue">Guardando resultados y cerrando sala…</span>
+                <div className="w-8 h-8 border-4 border-brandPrimary border-t-transparent rounded-full animate-spin" />
+                <span className="font-bold text-sm text-brandPrimary">Guardando resultados y cerrando sala…</span>
               </div>
             ) : (
               <div className="flex gap-3 w-full">
@@ -391,7 +391,7 @@ export default function Dashboard({ pin, sesion }) {
                 </button>
                 <button
                   onClick={executeCerrar}
-                  className="flex-1 btn-primary bg-kahootGreen hover:bg-kahootGreen/90 py-3 text-white font-black"
+                  className="flex-1 btn-primary bg-brandSuccess hover:bg-brandSuccess/90 py-3 text-white font-black"
                 >
                   Sí, Guardar
                 </button>

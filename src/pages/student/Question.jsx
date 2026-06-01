@@ -9,8 +9,54 @@ const Circle = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-8
 const Square = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>;
 const SHAPES = [Triangle, Diamond, Circle, Square];
 const OPTION_COLORS = ['option-red', 'option-blue', 'option-yellow', 'option-green'];
-const CATEGORY_COLORS = ['bg-kahootBlue text-white', 'bg-kahootGreen text-white'];
-const CATEGORY_BORDERS = ['border-kahootBlue', 'border-kahootGreen'];
+
+// Lectura en voz alta (accesibilidad / lectores iniciales). Usa la voz del
+// navegador (gratis). Construye el texto a leer según el tipo de actividad.
+export function textoLeible(actividad) {
+  if (!actividad) return '';
+  const partes = [];
+  if (actividad.pasaje) partes.push(actividad.pasaje);
+  partes.push(actividad.pregunta || actividad.enunciado || actividad.instruccion || actividad.oracion || '');
+  if (Array.isArray(actividad.opciones)) partes.push('Opciones: ' + actividad.opciones.join('. '));
+  return partes.filter(Boolean).join('. ');
+}
+
+export function hablar(texto) {
+  try {
+    if (typeof window === 'undefined' || !window.speechSynthesis || !texto) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'es-CO';
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  } catch { /* navegador sin soporte: se ignora */ }
+}
+
+// Doble beep al agotarse el tiempo. Web Audio (sin archivos, funciona offline).
+export function beepFinTiempo() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const tono = (inicio, freq) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + inicio);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + inicio + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + inicio + 0.25);
+      osc.start(ctx.currentTime + inicio);
+      osc.stop(ctx.currentTime + inicio + 0.28);
+    };
+    tono(0, 880);
+    tono(0.3, 660);
+    setTimeout(() => { try { ctx.close(); } catch { /* ignore */ } }, 800);
+  } catch { /* sin audio: se ignora */ }
+}
+const CATEGORY_COLORS = ['bg-brandPrimary text-white', 'bg-brandSuccess text-white'];
+const CATEGORY_BORDERS = ['border-brandPrimary', 'border-brandSuccess'];
 
 // ---------------------------------------------------------------------------
 // Componente raíz
@@ -21,10 +67,17 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
   const total = sesion.preguntas.length;
   const esSinLimite = sesion.pregunta_duracion === 0;
 
+  // Sonido al agotarse el tiempo (solo cuando hay límite y el alumno no respondió aún).
+  const yaRespondioActual = yo.respuestas_registradas?.[idx] !== undefined;
+  const onExpire = useCallback(() => {
+    if (!yaRespondioActual) beepFinTiempo();
+  }, [yaRespondioActual]);
+
   const restante = useServerTimer(
     sesion.pregunta_inicio_ts,
     sesion.pregunta_duracion,
-    !bloqueado
+    !bloqueado,
+    onExpire
   );
 
   const yaRespondio = yo.respuestas_registradas?.[idx] !== undefined;
@@ -46,30 +99,70 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
     <main className="min-h-screen flex flex-col p-4 md:p-8 bg-gameBg">
       {/* Header compartido */}
       <header className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => window.location.href = '/'}
-          className="bg-white/80 backdrop-blur text-ink px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-white transition-colors"
-        >
-          ⌂ Inicio
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.location.href = '/'}
+            className="bg-white/80 backdrop-blur text-ink px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-white transition-colors"
+          >
+            ⌂ Inicio
+          </button>
+          <button
+            onClick={() => hablar(textoLeible(actividad))}
+            className="bg-white/80 backdrop-blur text-ink w-10 h-10 rounded-lg font-bold text-lg shadow-sm hover:bg-white transition-colors flex items-center justify-center"
+            aria-label="Leer en voz alta"
+            title="Leer en voz alta"
+          >
+            🔊
+          </button>
+        </div>
         <div className="font-bold text-sm tracking-widest uppercase text-ink/50 bg-black/5 px-4 py-2 rounded-full">
           {idx + 1} de {total}
         </div>
         <div className={`font-black tabular-nums text-3xl md:text-4xl bg-white w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full shadow-md ${
-          !bloqueado && !esSinLimite && restante <= 5 ? 'text-kahootRed animate-pulse' : 'text-ink'
+          !bloqueado && !esSinLimite && restante <= 5 ? 'text-brandDanger animate-pulse' : 'text-ink'
         }`}>
           {bloqueado ? '0' : (esSinLimite ? '∞' : restante)}
         </div>
       </header>
 
-      {/* Dispatcher por tipo */}
+      {/* Barra de tiempo: visible solo cuando hay límite. Se vacía al agotarse. */}
+      {!esSinLimite && (
+        <div className="h-2.5 bg-white/50 rounded-full overflow-hidden mb-4 shadow-inner">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+              !bloqueado && restante <= 5 ? 'bg-brandDanger' : 'bg-brandPrimary'
+            }`}
+            style={{
+              width: bloqueado
+                ? '0%'
+                : `${Math.max(0, Math.min(100, (restante / (sesion.pregunta_duracion || 1)) * 100))}%`,
+            }}
+          />
+        </div>
+      )}
+
+      {/* Dispatcher por tipo (compartido con la vista previa del docente) */}
+      <ActivityStudentView {...props} />
+    </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dispatcher de la actividad en la vista del estudiante. Se exporta para
+// reutilizarlo en la VISTA PREVIA del docente (mismo aspecto que ve el alumno).
+// ---------------------------------------------------------------------------
+export function ActivityStudentView({ actividad, bloqueado, yaRespondio, miRespuesta, responder, seed }) {
+  if (!actividad) return null;
+  const props = { actividad, bloqueado, yaRespondio, miRespuesta, responder, seed };
+  return (
+    <>
       {actividad.tipo === 'seleccion_clasica' && <SeleccionUI {...props} />}
       {actividad.tipo === 'verdad_mito' && (
         <BinarioUI {...props}
           enunciado={actividad.enunciado}
           opciones={[
-            { val: 'verdad',    label: '✅ Verdad',    color: 'bg-kahootGreen' },
-            { val: 'mito',      label: '❌ Mito',      color: 'bg-kahootRed'   },
+            { val: 'verdad',    label: '✅ Verdad',    color: 'bg-brandSuccess' },
+            { val: 'mito',      label: '❌ Mito',      color: 'bg-brandDanger'   },
           ]}
         />
       )}
@@ -77,8 +170,8 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
         <BinarioUI {...props}
           enunciado={actividad.enunciado}
           opciones={[
-            { val: 'real',      label: '✅ Real',      color: 'bg-kahootBlue'  },
-            { val: 'inventado', label: '🎭 Inventado', color: 'bg-kahootRed'   },
+            { val: 'real',      label: '✅ Real',      color: 'bg-brandPrimary'  },
+            { val: 'inventado', label: '🎭 Inventado', color: 'bg-brandDanger'   },
           ]}
         />
       )}
@@ -95,7 +188,7 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
       {actividad.tipo === 'palabras_perdidas'  && <PalabrasPierdidasUI {...props} />}
       {/* Fallback para actividades sin tipo (compatibilidad hacia atrás) */}
       {!actividad.tipo && <SeleccionUI {...props} actividad={{ ...actividad, tipo: 'seleccion_clasica' }} />}
-    </main>
+    </>
   );
 }
 
@@ -118,7 +211,7 @@ function BotonConfirmar({ onClick, disabled, label = 'Confirmar respuesta' }) {
       <button
         onClick={onClick}
         disabled={disabled}
-        className="btn-primary bg-kahootGreen px-10 disabled:opacity-40"
+        className="btn-primary bg-brandSuccess px-10 disabled:opacity-40"
       >
         {label}
       </button>
@@ -141,9 +234,9 @@ function RespuestaEnviada() {
     <section className="flex-1 flex flex-col items-center justify-center gap-6 py-10 animate-fade-in">
       <div className="relative flex items-center justify-center">
         {/* Anillo pulsante */}
-        <span className="absolute w-28 h-28 rounded-full bg-kahootGreen/20 animate-ping" />
-        <span className="absolute w-20 h-20 rounded-full bg-kahootGreen/30" />
-        <div className="relative w-16 h-16 rounded-full bg-kahootGreen flex items-center justify-center shadow-lg">
+        <span className="absolute w-28 h-28 rounded-full bg-brandSuccess/20 animate-ping" />
+        <span className="absolute w-20 h-20 rounded-full bg-brandSuccess/30" />
+        <div className="relative w-16 h-16 rounded-full bg-brandSuccess flex items-center justify-center shadow-lg">
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"
                strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
             <polyline points="20 6 9 17 4 12" />
@@ -159,7 +252,7 @@ function RespuestaEnviada() {
         {[0, 1, 2].map(i => (
           <span
             key={i}
-            className="w-3 h-3 rounded-full bg-kahootGreen/60 animate-bounce"
+            className="w-3 h-3 rounded-full bg-brandSuccess/60 animate-bounce"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}
@@ -303,7 +396,7 @@ function CazaIntrusoUI({ actividad, bloqueado, yaRespondio, miRespuesta, respond
             key={i}
             onClick={() => onElegir(i)}
             disabled={bloqueado}
-            className="bg-white border-2 border-mist rounded-2xl p-4 font-bold text-lg shadow-sm transition-all text-center hover:border-kahootBlue hover:shadow-md"
+            className="bg-white border-2 border-mist rounded-2xl p-4 font-bold text-lg shadow-sm transition-all text-center hover:border-brandPrimary hover:shadow-md"
           >
             {el}
           </button>
@@ -329,8 +422,8 @@ function DetectiveTextoUI({ actividad, bloqueado, yaRespondio, miRespuesta, resp
   // El pasaje siempre visible — solo las opciones se ocultan al confirmar
   const Pasaje = () => (
     <section className="mb-4">
-      <div className="bg-white w-full p-5 md:p-8 rounded-2xl shadow-sm border-l-4 border-kahootBlue mb-4">
-        <p className="font-bold text-xs tracking-widest uppercase text-kahootBlue mb-3">🕵️ Pasaje</p>
+      <div className="bg-white w-full p-5 md:p-8 rounded-2xl shadow-sm border-l-4 border-brandPrimary mb-4">
+        <p className="font-bold text-xs tracking-widest uppercase text-brandPrimary mb-3">🕵️ Pasaje</p>
         <p className="text-base md:text-lg font-bold text-ink leading-relaxed">{actividad.pasaje}</p>
       </div>
       <div className="bg-white w-full py-5 px-6 rounded-2xl shadow-sm text-center">
@@ -434,12 +527,12 @@ function OrdenUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, it
               disabled={bloqueado}
               className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 font-bold text-lg transition-all text-left ${
                 colocado
-                  ? 'border-kahootBlue bg-kahootBlue/5 shadow-sm'
-                  : 'border-mist bg-white hover:border-kahootBlue/50'
+                  ? 'border-brandPrimary bg-brandPrimary/5 shadow-sm'
+                  : 'border-mist bg-white hover:border-brandPrimary/50'
               }`}
             >
               <span className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
-                colocado ? 'bg-kahootBlue text-white' : 'bg-ink/10 text-ink/40'
+                colocado ? 'bg-brandPrimary text-white' : 'bg-ink/10 text-ink/40'
               }`}>
                 {colocado ? pos + 1 : '?'}
               </span>
@@ -463,7 +556,7 @@ function OrdenUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, it
         <button
           onClick={confirmar}
           disabled={bloqueado || sequencia.length !== items.length || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>
@@ -559,15 +652,15 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
                 onClick={() => matched !== null ? clearPair(li) : clickLeft(li)}
                 className={`w-full p-3 rounded-xl border-2 font-bold text-sm text-left transition-all ${
                   isSelected
-                    ? 'border-kahootBlue bg-kahootBlue/10 ring-2 ring-kahootBlue/30'
+                    ? 'border-brandPrimary bg-brandPrimary/10 ring-2 ring-brandPrimary/30'
                     : matched !== null
-                      ? 'border-kahootGreen bg-kahootGreen/5'
-                      : 'border-mist bg-white hover:border-kahootBlue/50'
+                      ? 'border-brandSuccess bg-brandSuccess/5'
+                      : 'border-mist bg-white hover:border-brandPrimary/50'
                 }`}
               >
                 <div>{par.izquierda}</div>
                 {matched !== null && (
-                  <div className="text-xs text-kahootGreen mt-1">
+                  <div className="text-xs text-brandSuccess mt-1">
                     ↔ {pares[matched]?.derecha}
                   </div>
                 )}
@@ -589,7 +682,7 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
                   isUsed
                     ? 'border-mist bg-mist/30 opacity-40 cursor-not-allowed'
                     : selectedLeft !== null
-                      ? 'border-kahootGreen bg-kahootGreen/5 hover:bg-kahootGreen/10'
+                      ? 'border-brandSuccess bg-brandSuccess/5 hover:bg-brandSuccess/10'
                       : 'border-mist bg-white'
                 }`}
               >
@@ -609,7 +702,7 @@ function ParejasUI({ actividad, bloqueado, yaRespondio, miRespuesta, responder, 
         <button
           onClick={confirmar}
           disabled={bloqueado || !listo || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>
@@ -701,7 +794,7 @@ function ClasificadorUI({ actividad, bloqueado, yaRespondio, miRespuesta, respon
         <button
           onClick={confirmar}
           disabled={bloqueado || !listo || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>
@@ -781,9 +874,9 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
                     onClick={() => clearBlanco(i)}
                     className={`mx-1 min-w-[80px] px-3 py-1 rounded-xl font-black border-b-4 transition-all ${
                       blanco === i
-                        ? 'border-kahootBlue bg-kahootBlue/10 text-kahootBlue'
+                        ? 'border-brandPrimary bg-brandPrimary/10 text-brandPrimary'
                         : elegidas[i]
-                          ? 'border-kahootGreen bg-kahootGreen/10 text-kahootGreen'
+                          ? 'border-brandSuccess bg-brandSuccess/10 text-brandSuccess'
                           : 'border-ink/30 bg-ink/5 text-ink/30'
                     }`}
                   >
@@ -813,7 +906,7 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
                 className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                   usada
                     ? 'bg-ink/5 text-ink/20 cursor-not-allowed'
-                    : 'bg-white border-2 border-kahootBlue text-kahootBlue hover:bg-kahootBlue hover:text-white shadow-sm'
+                    : 'bg-white border-2 border-brandPrimary text-brandPrimary hover:bg-brandPrimary hover:text-white shadow-sm'
                 }`}
               >
                 {palabra}
@@ -834,7 +927,7 @@ function PalabrasPierdidasUI({ actividad, bloqueado, yaRespondio, miRespuesta, r
         <button
           onClick={confirmar}
           disabled={bloqueado || !listo || cargando}
-          className="btn-primary bg-kahootGreen py-2 px-6 disabled:opacity-40"
+          className="btn-primary bg-brandSuccess py-2 px-6 disabled:opacity-40"
         >
           {cargando ? '…' : 'Confirmar'}
         </button>

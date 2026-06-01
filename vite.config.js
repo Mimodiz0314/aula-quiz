@@ -9,23 +9,28 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: {
         id: '/',
-        name: 'Aula',
+        lang: 'es',
+        name: 'EduMaster Aula',
         short_name: 'Aula',
-        description: 'Plataforma de evaluación interactiva',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        description: 'EduMaster Aula — evaluación interactiva en tiempo real para el aula de clase.',
+        theme_color: '#2A394B',
+        background_color: '#2A394B',
         display: 'standalone',
+        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
         orientation: 'portrait',
         categories: ['education', 'utilities'],
+        prefer_related_applications: false,
+        related_applications: [],
+        iarc_rating_id: 'e',
         icons: [
           { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: '/pwa-maskable-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ],
         screenshots: [
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', form_factor: 'wide', label: 'Aula Desktop' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', form_factor: 'narrow', label: 'Aula Mobile' }
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', form_factor: 'wide', label: 'EduMaster Aula' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', form_factor: 'narrow', label: 'EduMaster Aula' }
         ]
       }
     })

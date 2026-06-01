@@ -72,6 +72,36 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+    "banco_comunidad": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email != null"
+    },
+    "ai_training_logs": {
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
+      ".write": "auth != null && auth.token.email != null"
+    },
+    "configuracion_ia": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'"
+    },
+    "foro": {
+      "categorias": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'"
+      },
+      "hilos": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email != null"
+      },
+      "respuestas": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email != null"
+      },
+      "reportes": {
+        ".read": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'",
+        ".write": "auth != null && auth.token.email != null"
+      }
     }
   }
 }

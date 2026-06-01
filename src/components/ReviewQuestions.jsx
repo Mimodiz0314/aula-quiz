@@ -38,7 +38,7 @@ export default function ReviewQuestions({ initialQuestions, onConfirm, onCancel 
     ]);
   };
 
-  const colors = ['bg-kahootRed', 'bg-kahootBlue', 'bg-kahootYellow', 'bg-kahootGreen'];
+  const colors = ['bg-brandDanger', 'bg-brandPrimary', 'bg-brandAccent', 'bg-brandSuccess'];
 
   return (
     <div className="w-full space-y-6">
@@ -48,7 +48,7 @@ export default function ReviewQuestions({ initialQuestions, onConfirm, onCancel 
           <button onClick={onCancel} className="btn-ghost text-deny">Cancelar</button>
           <button 
             onClick={() => onConfirm(questions)} 
-            className="btn-primary bg-kahootGreen"
+            className="btn-primary bg-brandSuccess"
             disabled={questions.length === 0}
           >
             Iniciar Sala ✨
@@ -61,7 +61,7 @@ export default function ReviewQuestions({ initialQuestions, onConfirm, onCancel 
           <div key={qIndex} className="bg-white p-6 rounded-2xl shadow-sm border-t-8 border-ink/10 relative">
             <button 
               onClick={() => handleDelete(qIndex)}
-              className="absolute top-4 right-4 text-deny hover:text-kahootRed font-bold"
+              className="absolute top-4 right-4 text-deny hover:text-brandDanger font-bold"
             >
               ✕ Eliminar
             </button>
@@ -87,7 +87,7 @@ export default function ReviewQuestions({ initialQuestions, onConfirm, onCancel 
                       name={`correcta-${qIndex}`} 
                       checked={q.correcta === oIndex}
                       onChange={() => handleCorrectChange(qIndex, oIndex)}
-                      className="w-5 h-5 accent-kahootGreen cursor-pointer"
+                      className="w-5 h-5 accent-brandSuccess cursor-pointer"
                     />
                     <label className="text-xs font-bold text-ink/50 uppercase">Opción {oIndex + 1} {q.correcta === oIndex && '(Correcta)'}</label>
                   </div>

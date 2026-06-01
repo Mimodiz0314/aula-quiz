@@ -9,6 +9,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { deterministicShuffle } from '../utils/shuffle.js';
+import { ordenarPorClave, parejasCorrectas, clasificacionCorrecta } from '../utils/clave.js';
+import { exportarAWord } from '../utils/wordExport.js';
 
 const LETRAS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const ENCABEZADO_KEY = 'aula_encabezado'; // institución + docente recordados
@@ -18,7 +20,7 @@ function leerEncabezado() {
   catch { return {}; }
 }
 
-export default function WorksheetPrint({ actividades = [], tema = '', onClose }) {
+export default function WorksheetPrint({ actividades = [], tema = '', grado = '', dificultad = '', onClose }) {
   const [modo, setModo] = useState('estudiante'); // 'estudiante' | 'clave'
 
   // Encabezado editable (se recuerda institución y docente entre sesiones).
@@ -48,6 +50,23 @@ export default function WorksheetPrint({ actividades = [], tema = '', onClose })
     document.body.classList.add('printing-worksheet');
     // Pequeño respiro para que el navegador aplique la clase antes del diálogo.
     setTimeout(() => window.print(), 50);
+  }
+
+  async function descargarWord() {
+    try {
+      const blob = await exportarAWord(actividades, {
+        titulo, grado, dificultad, docente: encabezado.docente, institucion: encabezado.institucion, esClave, notas
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${titulo || 'Actividades'}${esClave ? '_Clave' : ''}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generando Word:', error);
+      alert('Hubo un error al generar el documento de Word.');
+    }
   }
 
   const esClave = modo === 'clave';
@@ -82,12 +101,20 @@ export default function WorksheetPrint({ actividades = [], tema = '', onClose })
           </button>
         </div>
 
-        <button
-          onClick={imprimir}
-          className="bg-kahootGreen hover:bg-kahootGreen/90 px-5 py-2 rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-sm"
-        >
-          🖨️ Imprimir / PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={descargarWord}
+            className="bg-brandPrimary hover:bg-brandPrimary/90 px-5 py-2 rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-sm text-white"
+          >
+            📄 Word
+          </button>
+          <button
+            onClick={imprimir}
+            className="bg-brandSuccess hover:bg-brandSuccess/90 px-5 py-2 rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-sm text-white"
+          >
+            🖨️ Imprimir / PDF
+          </button>
+        </div>
       </div>
 
       {/* Hoja (esto sí se imprime) */}
@@ -96,6 +123,8 @@ export default function WorksheetPrint({ actividades = [], tema = '', onClose })
           <Encabezado
             esClave={esClave}
             total={actividades.length}
+            grado={grado}
+            dificultad={dificultad}
             institucion={encabezado.institucion || ''}
             docente={encabezado.docente || ''}
             titulo={titulo}
@@ -131,7 +160,8 @@ export default function WorksheetPrint({ actividades = [], tema = '', onClose })
 // En pantalla los campos editables se ven con borde; al imprimir, el borde
 // desaparece y queda como texto natural del documento.
 // ---------------------------------------------------------------------------
-function Encabezado({ esClave, total, institucion, docente, titulo, notas, onInstitucion, onDocente, onTitulo, onNotas }) {
+function Encabezado({ esClave, total, grado, dificultad, institucion, docente, titulo, notas, onInstitucion, onDocente, onTitulo, onNotas }) {
+  const metaTexto = [grado, dificultad].filter(Boolean).join(' · ');
   return (
     <header className="border-b-2 border-gray-800 pb-4">
       <div className="flex items-start justify-between gap-4">
@@ -152,6 +182,7 @@ function Encabezado({ esClave, total, institucion, docente, titulo, notas, onIns
           placeholder="Título de la guía"
           className="ws-title text-2xl md:text-3xl font-black text-center leading-tight w-full bg-transparent"
         />
+        {metaTexto && <span className="block text-sm font-bold text-gray-500 mt-1">{metaTexto}</span>}
         {esClave && <span className="block text-base font-bold text-gray-500 mt-1">— CLAVE DE RESPUESTAS —</span>}
       </div>
 
@@ -236,7 +267,7 @@ function ActividadImprimible({ actividad, numero, esClave }) {
 
 // --- Helpers visuales ---
 function Enunciado({ children }) {
-  return <p className="font-bold text-[15px] leading-snug mb-2">{children}</p>;
+  return <p className="font-bold text-[15px] leading-snug mb-2 outline-none hover:bg-blue-50 transition-colors cursor-text rounded px-1" contentEditable suppressContentEditableWarning>{children}</p>;
 }
 const circulo = 'inline-block w-4 h-4 border-2 border-gray-700 rounded-full mr-2 align-middle';
 const cuadro = 'inline-block w-4 h-4 border-2 border-gray-700 rounded-[3px] mr-2 align-middle';
@@ -253,7 +284,7 @@ function Seleccion({ actividad, esClave }) {
             <li key={i} className={`text-[14px] ${correcta ? 'font-black' : ''}`}>
               <span className={correcta ? 'inline-block w-4 h-4 rounded-full bg-gray-800 mr-2 align-middle' : circulo} />
               <span className="font-bold mr-1">{LETRAS[i]})</span>
-              {op}
+              <span className="outline-none hover:bg-blue-50 transition-colors cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{op}</span>
               {correcta && <span className="ml-2">✓</span>}
             </li>
           );
@@ -267,7 +298,7 @@ function Seleccion({ actividad, esClave }) {
 function Detective({ actividad, esClave }) {
   return (
     <>
-      <div className="border border-gray-400 rounded-md p-3 mb-2 bg-gray-50 text-[14px] leading-relaxed italic">
+      <div className="border border-gray-400 rounded-md p-3 mb-2 bg-gray-50 text-[14px] leading-relaxed italic outline-none hover:bg-blue-50 transition-colors cursor-text" contentEditable suppressContentEditableWarning>
         {actividad.pasaje}
       </div>
       <Seleccion actividad={actividad} esClave={esClave} />
@@ -284,11 +315,11 @@ function Binario({ actividad, esClave, a, b, valorA }) {
       <div className="flex gap-8 ml-1 text-[14px]">
         <span className={esClave && esA ? 'font-black' : ''}>
           <span className={esClave && esA ? 'inline-block w-4 h-4 bg-gray-800 rounded-[3px] mr-2 align-middle' : cuadro} />
-          {a}{esClave && esA && ' ✓'}
+          <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{a}</span>{esClave && esA && ' ✓'}
         </span>
         <span className={esClave && !esA ? 'font-black' : ''}>
           <span className={esClave && !esA ? 'inline-block w-4 h-4 bg-gray-800 rounded-[3px] mr-2 align-middle' : cuadro} />
-          {b}{esClave && !esA && ' ✓'}
+          <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{b}</span>{esClave && !esA && ' ✓'}
         </span>
       </div>
       {esClave && actividad.explicacion && (
@@ -308,7 +339,7 @@ function CazaIntruso({ actividad, esClave }) {
         {actividad.elementos.map((el, i) => {
           const intruso = esClave && i === actividad.intruso_idx;
           return (
-            <span key={i} className={intruso ? 'font-black px-2 border-2 border-gray-800 rounded-full' : ''}>
+            <span key={i} className={`outline-none hover:bg-blue-50 cursor-text px-1 rounded ${intruso ? 'font-black px-2 border-2 border-gray-800 rounded-full' : ''}`} contentEditable suppressContentEditableWarning>
               {el}{intruso && ' ✓'}
             </span>
           );
@@ -322,8 +353,10 @@ function CazaIntruso({ actividad, esClave }) {
 function Orden({ actividad, esClave, numero, tipo }) {
   const items = tipo === 'rompecabezas_ideas' ? actividad.fragmentos : actividad.pasos;
   const seed = `worksheet-${numero}-${tipo}`;
+  // Clave: orden correcto (reordenado con la clave si el contenido viene barajado).
+  const correctos = ordenarPorClave(items, actividad.orden);
   const mostrados = esClave
-    ? items.map((item, origIdx) => ({ item, origIdx }))
+    ? correctos.map((item, origIdx) => ({ item, origIdx }))
     : deterministicShuffle(items, seed);
 
   return (
@@ -338,7 +371,7 @@ function Orden({ actividad, esClave, numero, tipo }) {
             <span className="inline-block w-7 border-b border-gray-500 text-center font-black mr-2 align-middle">
               {esClave ? origIdx + 1 : ' '}
             </span>
-            {item}
+            <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{item}</span>
           </li>
         ))}
       </ul>
@@ -360,20 +393,23 @@ function Parejas({ actividad, esClave, numero }) {
       <div className="grid grid-cols-2 gap-x-8 ml-1 text-[14px]">
         <ul className="space-y-1.5">
           {actividad.pares.map((par, i) => {
-            const letraCorrecta = LETRAS[derechas.findIndex(d => d.origIdx === i)];
+            // La derecha correcta para la izquierda i está en el índice mapeo[i]
+            // (o i, si no hay clave). Buscamos su letra en la columna barajada.
+            const correctaIdx = Array.isArray(actividad.mapeo) ? actividad.mapeo[i] : i;
+            const letraCorrecta = LETRAS[derechas.findIndex(d => d.origIdx === correctaIdx)];
             return (
               <li key={i}>
                 <span className="inline-block w-7 border-b border-gray-500 text-center font-black mr-2 align-middle">
                   {esClave ? letraCorrecta : ' '}
                 </span>
-                <span className="font-bold">{i + 1}.</span> {par.izquierda}
+                <span className="font-bold">{i + 1}.</span> <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{par.izquierda}</span>
               </li>
             );
           })}
         </ul>
         <ul className="space-y-1.5">
           {derechas.map(({ item }, i) => (
-            <li key={i}><span className="font-bold mr-1">{LETRAS[i]})</span> {item}</li>
+            <li key={i}><span className="font-bold mr-1">{LETRAS[i]})</span> <span className="outline-none hover:bg-blue-50 cursor-text px-1 rounded" contentEditable suppressContentEditableWarning>{item}</span></li>
           ))}
         </ul>
       </div>
@@ -410,7 +446,7 @@ function Clasificador({ actividad, esClave }) {
           {cats.map((cat, ci) => (
             <div key={ci} className="border border-gray-400 rounded-md p-2">
               <p className="font-black border-b border-gray-300 mb-1 pb-1">{cat.nombre}</p>
-              {(cat.items || []).map((it, ii) => <p key={ii}>· {it}</p>)}
+              {(clasificacionCorrecta(actividad)[ci] || []).map((it, ii) => <p key={ii}>· {it}</p>)}
             </div>
           ))}
         </div>

@@ -44,7 +44,7 @@ export default function FinalScore({ sesion, yo }) {
             #{puesto || '-'}
           </div>
           {yo.puntos_juego !== undefined && yo.puntos_juego !== null && (
-            <p className="font-black text-kahootBlue text-lg mb-6">
+            <p className="font-black text-brandPrimary text-lg mb-6">
               {(yo.puntos_juego || 0).toLocaleString('es-CO')} pts
               {(yo.racha || 0) >= 2 && <span className="ml-2">🔥{yo.racha}</span>}
             </p>
