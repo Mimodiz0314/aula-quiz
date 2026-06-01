@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { ref, set, get } from 'firebase/database';
 import {
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   EmailAuthProvider,
@@ -12,24 +10,6 @@ import {
 } from 'firebase/auth';
 import { useAuth } from '../../hooks/useAuth.js';
 import { auth, db } from '../../firebase/config.js';
-
-// Detecta si la app corre dentro de Capacitor (WebView nativo de Android/iOS)
-// En ese entorno signInWithPopup falla; hay que usar signInWithRedirect.
-const esCapacitor = () =>
-  typeof window !== 'undefined' &&
-  (window.Capacitor?.isNativePlatform?.() ||
-    window.location.protocol === 'capacitor:' ||
-    window.location.hostname === 'localhost' && typeof window.Capacitor !== 'undefined');
-
-// Inicia Google Auth de forma apropiada según el entorno
-async function iniciarGoogleAuth(provider) {
-  if (esCapacitor()) {
-    // En WebView se usa redirect; el resultado se recoge en getRedirectResult()
-    await signInWithRedirect(auth, provider);
-    return null; // la página se recarga, el resultado llega en el useEffect
-  }
-  return signInWithPopup(auth, provider);
-}
 
 export default function TeacherLogin() {
   const { user, role, loading, login, registrar, refreshUserData } = useAuth();
@@ -52,35 +32,8 @@ export default function TeacherLogin() {
 
   const desactivado = searchParams.get('desactivado') === '1';
 
-  // Recoger el resultado de signInWithRedirect al volver de Google
-  // (solo aplica en Capacitor/Android; en web signInWithPopup no necesita esto)
   useEffect(() => {
     if (desactivado) setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
-
-    getRedirectResult(auth)
-      .then(async (cred) => {
-        if (!cred) return; // no venimos de un redirect
-        const snap = await get(ref(db, `usuarios/${cred.user.uid}`));
-        if (!snap.exists()) {
-          await auth.signOut();
-          setError('Esta cuenta de Google no está registrada. Usa "Nuevo Docente" con correo y contraseña.');
-          return;
-        }
-        const rol = snap.val().rol;
-        if (rol !== 'docente' && rol !== 'admin') {
-          await auth.signOut();
-          setError('Esta cuenta de Google no tiene acceso de docente.');
-          return;
-        }
-        await refreshUserData();
-        navigate('/docente', { replace: true });
-      })
-      .catch((err) => {
-        if (err.code && err.code !== 'auth/popup-closed-by-user') {
-          setError(mensajeError(err.code) || err.message || 'Error con Google.');
-        }
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desactivado]);
 
   // Redirigir si ya está autenticado (excepto durante el flujo de establecer contraseña)
@@ -104,17 +57,13 @@ export default function TeacherLogin() {
     setExito('');
   }
 
-  // ── Ingresar con Google ──────────────────────────────────────────────────
+  // ── Ingresar con Google (solo disponible en el navegador web) ────────────
   async function handleGoogle() {
     setError('');
     setCargando(true);
     try {
       const provider = new GoogleAuthProvider();
-      const cred = await iniciarGoogleAuth(provider);
-
-      // En Capacitor (redirect) cred es null; el resultado llega en el useEffect.
-      if (!cred) return;
-
+      const cred = await signInWithPopup(auth, provider);
       const snap = await get(ref(db, `usuarios/${cred.user.uid}`));
       if (!snap.exists()) {
         await auth.signOut();
@@ -153,7 +102,7 @@ export default function TeacherLogin() {
     }
   }
 
-  // ── Establecer contraseña via Google (sin email) ─────────────────────────
+  // ── Establecer contraseña via Google (solo en navegador web) ────────────
   async function handleEstablecerConGoogle(e) {
     e.preventDefault();
     if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
@@ -164,10 +113,7 @@ export default function TeacherLogin() {
 
     try {
       const provider = new GoogleAuthProvider();
-      const cred = await iniciarGoogleAuth(provider);
-
-      // En Capacitor (redirect) cred es null; el resultado llega en el useEffect.
-      if (!cred) return;
+      const cred = await signInWithPopup(auth, provider);
 
       // Verificar acceso
       const snap = await get(ref(db, `usuarios/${cred.user.uid}`));
