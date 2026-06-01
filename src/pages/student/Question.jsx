@@ -31,6 +31,30 @@ export function hablar(texto) {
     window.speechSynthesis.speak(u);
   } catch { /* navegador sin soporte: se ignora */ }
 }
+
+// Doble beep al agotarse el tiempo. Web Audio (sin archivos, funciona offline).
+export function beepFinTiempo() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const tono = (inicio, freq) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + inicio);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + inicio + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + inicio + 0.25);
+      osc.start(ctx.currentTime + inicio);
+      osc.stop(ctx.currentTime + inicio + 0.28);
+    };
+    tono(0, 880);
+    tono(0.3, 660);
+    setTimeout(() => { try { ctx.close(); } catch { /* ignore */ } }, 800);
+  } catch { /* sin audio: se ignora */ }
+}
 const CATEGORY_COLORS = ['bg-brandPrimary text-white', 'bg-brandSuccess text-white'];
 const CATEGORY_BORDERS = ['border-brandPrimary', 'border-brandSuccess'];
 
@@ -43,10 +67,17 @@ export default function Question({ pin, studentId, sesion, yo, bloqueado }) {
   const total = sesion.preguntas.length;
   const esSinLimite = sesion.pregunta_duracion === 0;
 
+  // Sonido al agotarse el tiempo (solo cuando hay límite y el alumno no respondió aún).
+  const yaRespondioActual = yo.respuestas_registradas?.[idx] !== undefined;
+  const onExpire = useCallback(() => {
+    if (!yaRespondioActual) beepFinTiempo();
+  }, [yaRespondioActual]);
+
   const restante = useServerTimer(
     sesion.pregunta_inicio_ts,
     sesion.pregunta_duracion,
-    !bloqueado
+    !bloqueado,
+    onExpire
   );
 
   const yaRespondio = yo.respuestas_registradas?.[idx] !== undefined;
