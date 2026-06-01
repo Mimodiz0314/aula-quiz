@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "579670241742",
+    "firebase_url": "https://aula-b1e1b-default-rtdb.firebaseio.com",
+    "project_id": "aula-b1e1b",
+    "storage_bucket": "aula-b1e1b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:579670241742:android:a259cc6777c0fcd4753b9f",
+        "android_client_info": {
+          "package_name": "com.edumaster.aula"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "579670241742-36r9gq0392sbh9c4ttuj6n7usc7aj51l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.edumaster.aula",
+            "certificate_hash": "c9e5449db6b34c225b5acd8e0d07abaa3277f2f8"
+          }
+        },
+        {
+          "client_id": "579670241742-k5bltu0sshahb7u5vuldofcn6e2n81en.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzG7FCLgEnf5FPKsgk_NUH2VeSOjtYoZ8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "579670241742-k5bltu0sshahb7u5vuldofcn6e2n81en.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

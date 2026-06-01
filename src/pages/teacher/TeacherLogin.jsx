@@ -11,6 +11,12 @@ import {
 import { useAuth } from '../../hooks/useAuth.js';
 import { auth, db } from '../../firebase/config.js';
 
+// Detecta si corre como APK nativo de Capacitor
+const esCapacitor = () =>
+  typeof window !== 'undefined' &&
+  (window.Capacitor?.isNativePlatform?.() ||
+    window.location.protocol === 'capacitor:');
+
 export default function TeacherLogin() {
   const { user, role, loading, login, registrar, refreshUserData } = useAuth();
   const navigate = useNavigate();
@@ -31,6 +37,7 @@ export default function TeacherLogin() {
   const [exito, setExito] = useState('');
 
   const desactivado = searchParams.get('desactivado') === '1';
+  const enAPK = esCapacitor();
 
   useEffect(() => {
     if (desactivado) setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
@@ -227,17 +234,30 @@ export default function TeacherLogin() {
 
         <div className="bg-white rounded-3xl shadow-sm border-t-8 border-brandPrimary p-8 md:p-10">
 
-          {/* ── Botón Google ── */}
-          <div className="mb-6">
-            <button
-              onClick={handleGoogle}
-              disabled={cargando}
-              className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl border-2 border-mist font-bold text-ink hover:bg-gameBg transition-colors disabled:opacity-50"
-            >
-              <GoogleIcon />
-              {cargando ? 'Verificando…' : 'Ingresar con Google'}
-            </button>
-          </div>
+          {/* ── Botón Google: solo disponible en el navegador web ── */}
+          {enAPK ? (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-xl shrink-0">📱</span>
+              <div>
+                <p className="font-bold text-sm text-amber-800">Acceso desde la app</p>
+                <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                  Ingresa con tu <strong>correo y contraseña</strong> abajo.
+                  El acceso con Google está disponible en la versión web.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <button
+                onClick={handleGoogle}
+                disabled={cargando}
+                className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl border-2 border-mist font-bold text-ink hover:bg-gameBg transition-colors disabled:opacity-50"
+              >
+                <GoogleIcon />
+                {cargando ? 'Verificando…' : 'Ingresar con Google'}
+              </button>
+            </div>
+          )}
 
           <Divider />
 
